@@ -9,20 +9,19 @@ Source0:    account-manager-%{version}.tar.gz
 Source1:    accounts-service.service
 
 BuildRequires:  cmake
-BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
-BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:	pkgconfig(glib-2.0) >= 2.26
 BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(gio-unix-2.0)
-BuildRequires:  pkgconfig(security-server)
+BuildRequires:  pkgconfig(cynara-client)
+BuildRequires:  pkgconfig(cynara-session)
+BuildRequires:  pkgconfig(cynara-creds-gdbus)
 BuildRequires:  pkgconfig(accounts-svc)
-BuildRequires:  dbus-python
 BuildRequires:  python-xml
 BuildRequires:  python-devel
 
@@ -69,14 +68,13 @@ rm -rf %{buildroot}/usr/lib/account-manager
 
 %post
 /sbin/ldconfig
-if [ ! -d /opt/usr/dbspace ]
+#if [ ! -d /opt/usr/dbspace ]
+#then
+#        mkdir -p /opt/usr/dbspace
+#fi
+if [ ! -f %{TZ_SYS_DB}/.account.db ]
 then
-        mkdir -p /opt/usr/dbspace
-fi
-if [ ! -f /opt/usr/dbspace/.account.db ]
-#rm -rf /opt/usr/dbspace/.account.db*
-then
-        sqlite3 /opt/usr/dbspace/.account.db 'PRAGMA journal_mode = PERSIST;
+        sqlite3 %{TZ_SYS_DB}/.account.db 'PRAGMA journal_mode = PERSIST;
         CREATE TABLE if not exists label (AppId TEXT, Label TEXT, Locale TEXT);
         CREATE TABLE if not exists account_type (_id INTEGER PRIMARY KEY AUTOINCREMENT, AppId TEXT,
         ServiceProviderId TEXT, IconPath TEXT, SmallIconPath TEXT, MultipleAccountSupport INT);
@@ -92,11 +90,11 @@ then
 fi
 
 mkdir -p /opt/usr/share/account
-chown system:system /opt/usr/dbspace/.account.db
-chown system:system /opt/usr/dbspace/.account.db-journal
+chown root:root %{TZ_SYS_DB}/.account.db
+chown root:root %{TZ_SYS_DB}/.account.db-journal
 
-chmod 600 /opt/usr/dbspace/.account.db
-chmod 600 /opt/usr/dbspace/.account.db-journal
+chmod 644 /opt/usr/dbspace/.account.db
+chmod 644 /opt/usr/dbspace/.account.db-journal
 
 #set message key value to NULL
 #vconftool set -t string db/account/msg '' -g 6514
@@ -116,13 +114,13 @@ fi
 
 %files
 %manifest libaccounts-svc.manifest
-%defattr(-,system,system,-)
-%attr(0700,system,system) %{_bindir}/account-svcd
-%attr(0600,system,system) %{_libdir}/systemd/system/accounts-service.service
-%attr(0600,system,system) %{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
+%defattr(-,root,root,-)
+%attr(0755,root,root) %{_bindir}/account-svcd
+%attr(-,root,root) %{_libdir}/systemd/system/accounts-service.service
+%attr(-,root,root) %{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
 
 %files devel
-%defattr(-,system,system,-)
-%attr(0700,system,system) %{_bindir}/account-svcd
-%attr(0600,system,system) %{_libdir}/systemd/system/accounts-service.service
-%attr(0600,system,system) %{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
+%defattr(-,root,root,-)
+%attr(0755,root,root) %{_bindir}/account-svcd
+%attr(-,root,root) %{_libdir}/systemd/system/accounts-service.service
+%attr(-,root,root) %{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
