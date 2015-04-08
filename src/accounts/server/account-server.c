@@ -19,24 +19,17 @@
 #define _DEFAULT_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdbool.h>
-#include <time.h>
 #include <signal.h>
-#include <string.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <unistd.h>
-#include <sys/timerfd.h>
-#include <poll.h>
-#include <stdint.h>
-#include <dbus/dbus.h>
 #include <glib.h>
 #if !GLIB_CHECK_VERSION (2, 31, 0)
 #include <glib/gmacros.h>
 #endif
-#include <security-server.h>
+#include <cynara-client.h>
+#include <cynara-session.h>
+#include <cynara-creds-gdbus.h>
 
 #include <gio/gio.h>
+
 #include "dbg.h"
 #include "account-server-db.h"
 #include "account_ipc_marshal.h"
@@ -44,16 +37,16 @@
 #include "account-private.h"
 #include "account-error.h"
 
-#define _CHECK_READ_LABEL "libaccounts-svc::check_read"
-#define _DB_LABEL "libaccounts-svc::db"
-#define _READ_LABEL "r"
-#define _WRITE_LABEL "w"
-#define _READ_WRITE_LABEL "rw"
+#define _PRIVILEGE_ACCOUNT_READ "http://tizen.org/privilege/account.read"
+#define _PRIVILEGE_ACCOUNT_WRITE "http://tizen.org/privilege/account.write"
 
 #define ACCOUNT_MGR_DBUS_PATH       "/org/tizen/account/manager"
 static guint owner_id = 0;
 GDBusObjectManagerServer *account_mgr_server_mgr = NULL;
 static AccountManager* account_mgr_server_obj = NULL;
+
+static cynara *p_cynara;
+
 //static gboolean has_owner = FALSE;
 
 // pid-mode, TODO: make it sessionId-mode, were session id is mix of pid and some rand no, so that
@@ -137,56 +130,117 @@ _account_error_quark (void)
 	return (GQuark) quark_volatile;
 }
 
-static int _check_privilege_by_cookie(char *e_cookie, const char *label, const char *access_perm, bool check_root, int pid) {
-	guchar *cookie = NULL;
-	gsize size = 0;
-	int retval = 0;
-	char buf[128] = {0,};
-	FILE *fp = NULL;
-	char title[128] = {0,};
-	int uid = -1;
+static int __check_privilege_by_cynara(const char *client, const char *session, const char *user, const char *privilege)
+{
+	int ret;
+	char err_buf[128] = {0,};
 
-	if (check_root) {
-		// Gets the userID from /proc/pid/status to check if the process is the root or not.
-		snprintf(buf, sizeof(buf), "/proc/%d/status", pid);
-		fp = fopen(buf, "r");
-		if(fp) {
-			while (fgets(buf, sizeof(buf), fp) != NULL) {
-				if(strncmp(buf, "Uid:", 4) == 0) {
-					sscanf(buf, "%s %d", title, &uid);
-					break;
-				}
-			}
-			fclose(fp);
-		}
+	ret = cynara_check(p_cynara, client, session, user, privilege);
+	switch (ret) {
+		case CYNARA_API_ACCESS_ALLOWED:
+			_DBG("cynara_check success");
+			return ACCOUNT_ERROR_NONE;
+		case CYNARA_API_ACCESS_DENIED:
+			_ERR("cynara_check permission deined, privilege=%s, error = CYNARA_API_ACCESS_DENIED", privilege);
+			return ACCOUNT_ERROR_PERMISSION_DENIED;
+		default:
+			cynara_strerror(ret, err_buf, sizeof(err_buf));
+			_ERR("cynara_check error : %s, privilege=%s, ret = %d", err_buf, privilege, ret);
+			return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+}
 
-		_INFO("uid : %d", uid);
+int __get_information_for_cynara_check(GDBusMethodInvocation *invocation, char **client, char **user, char **session)
+{
+	GDBusConnection *gdbus_conn = NULL;
+	char* sender = NULL;
+	int ret = -1;
+
+	//get GDBusConnection
+	gdbus_conn = g_dbus_method_invocation_get_connection(invocation);
+	if(gdbus_conn == NULL)
+	{
+		_ERR("g_dbus_method_invocation_get_connection failed");
+		return -1;
 	}
 
-	if (uid != 0) {	// Checks the cookie only when the process is not the root
-		cookie = g_base64_decode(e_cookie, &size);
-		if (cookie == NULL) {
-			_ERR("Unable to decode cookie!!!");
-			return ACCOUNT_ERROR_PERMISSION_DENIED;
-		}
-
-		retval = security_server_check_privilege_by_cookie((const char *)cookie, label, access_perm);
-		g_free(cookie);
-
-		if (retval < 0) {
-			if (retval == SECURITY_SERVER_API_ERROR_ACCESS_DENIED) {
-				_ERR("Access to account-svcd has been denied by smack.");
-			}
-			_ERR("Error has occurred in security_server_check_privilege_by_cookie() : %d.", retval);
-			return ACCOUNT_ERROR_PERMISSION_DENIED;
-		}
+	//get sender(unique_name)
+	sender = (char*) g_dbus_method_invocation_get_sender(invocation);
+	if (sender == NULL)
+	{
+		_ERR("g_dbus_method_invocation_get_sender failed");
+		return -1;
 	}
 
-	_INFO("The process(%d) was authenticated successfully.", pid);
+	ret = cynara_creds_gdbus_get_user(gdbus_conn, sender, CLIENT_METHOD_SMACK, user);
+	if (ret != CYNARA_API_SUCCESS)
+	{
+		_ERR("cynara_creds_gdbus_get_user failed, ret = %d", ret);
+		return -1;
+	}
+
+	ret = cynara_creds_gdbus_get_client(gdbus_conn, sender, CLIENT_METHOD_SMACK, client);
+	if (ret != CYNARA_API_SUCCESS)
+	{
+		_ERR("cynara_creds_gdbus_get_client failed, ret = %d", ret);
+		return -1;
+	}
+
+	guint pid = _get_client_pid(invocation);
+	_INFO("client Id = [%u]", pid);
+
+	*session = cynara_session_from_pid(pid);
+	if (*session == NULL)
+	{
+		_ERR("cynara_session_from_pid failed");
+		return -1;
+	}
 	return ACCOUNT_ERROR_NONE;
 }
 
-gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar* account_db_path, GVariant* account_data, gchar *cookie, gpointer user_data)
+int _check_privilege(GDBusMethodInvocation *invocation, const char* privilege)
+{
+	int ret = -1;
+	char *client = NULL;
+	char *session = NULL;
+	char *user = NULL;
+
+	ret = __get_information_for_cynara_check(invocation, &client, &user, &session);
+	if ( ret != ACCOUNT_ERROR_NONE )
+	{
+		_ERR("__get_information_for_cynara_check failed");
+		g_free(client);
+		g_free(user);
+		g_free(session);
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	ret = __check_privilege_by_cynara(client, session, user, privilege);
+	if ( ret != ACCOUNT_ERROR_NONE )
+	{
+		_ERR("__check_privilege_by_cynara failed, ret = %d", ret);
+		g_free(client);
+		g_free(user);
+		g_free(session);
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+	g_free(client);
+	g_free(user);
+	g_free(session);
+	return ACCOUNT_ERROR_NONE;
+}
+
+int _check_priviliege_account_read(GDBusMethodInvocation *invocation)
+{
+	return _check_privilege(invocation, _PRIVILEGE_ACCOUNT_READ);
+}
+
+int _check_priviliege_account_write(GDBusMethodInvocation *invocation)
+{
+	return _check_privilege(invocation, _PRIVILEGE_ACCOUNT_WRITE);
+}
+
+gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar* account_db_path, GVariant* account_data, gpointer user_data)
 {
 	_INFO("account_manager_account_add start");
 	int db_id = -1;
@@ -194,9 +248,17 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -250,7 +312,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path, gchar *cookie)
+gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path)
 {
 	_INFO("account_manager_account_query_all start");
 
@@ -259,9 +321,10 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -315,7 +378,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path, gchar *cookie)
+gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path)
 {
 	_INFO("account_manager_account_query_all start");
 
@@ -323,9 +386,10 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -379,7 +443,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path, GVariant *account_type_data, gchar *cookie, gpointer user_data)
+gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path, GVariant *account_type_data, gpointer user_data)
 {
 	int db_id = -1;
 
@@ -388,9 +452,16 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -446,16 +517,23 @@ RETURN:
 gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 											 GDBusMethodInvocation *invocation,
 											 gchar *account_db_path,
-											 gint account_db_id, gchar *cookie)
+											 gint account_db_id)
 {
 	_INFO("account_manager_account_delete_from_db_by_id start");
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -505,16 +583,23 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 															 GDBusMethodInvocation *invocation,
 															 gchar	*account_db_path,
 															 const gchar *user_name,
-															 const gchar *package_name, gchar *cookie)
+															 const gchar *package_name)
 {
 	_INFO("account_manager_account_delete_from_db_by_user_name start");
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -563,16 +648,23 @@ RETURN:
 gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *object,
 															 GDBusMethodInvocation *invocation,
 															 gchar	*account_db_path,
-															 const gchar *package_name, gboolean permission, gchar *cookie)
+															 const gchar *package_name, gboolean permission)
 {
 	_INFO("account_manager_account_delete_from_db_by_package_name start");
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -622,16 +714,23 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
 															GVariant *account_data,
-															gint account_id, gchar *cookie)
+															gint account_id)
 {
 	_INFO("account_manager_account_update_to_db_by_id start");
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -690,16 +789,23 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 															gchar *account_db_path,
 															GVariant *account_data,
 															const gchar *user_name,
-															const gchar *package_name, gchar *cookie)
+															const gchar *package_name)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_user_name start");
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -758,16 +864,17 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
 															const gchar *app_id,
-															const gchar *locale, gchar *cookie)
+															const gchar *locale)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_locale start");
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -816,7 +923,7 @@ RETURN:
 gboolean
 account_manager_handle_account_type_query_by_provider_feature(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path, const gchar *key, gchar *cookie)
+															gchar *account_db_path, const gchar *key)
 {
 	_INFO("account_manager_handle_account_type_query_by_provider_feature start");
 	GVariant* account_type_list_variant = NULL;
@@ -825,9 +932,10 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -891,16 +999,17 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gchar *account_db_path, gboolean include_hidden, gchar *cookie)
+gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gchar *account_db_path, gboolean include_hidden)
 {
 	_INFO("account_manager_account_get_total_count_from_db start");
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -948,7 +1057,7 @@ RETURN:
 }
 
 gboolean account_manager_handle_account_query_account_by_account_id(AccountManager *object, GDBusMethodInvocation *invocation,
-		gchar *account_db_path, gint account_db_id, gchar *cookie)
+		gchar *account_db_path, gint account_db_id)
 {
 	_INFO("account_manager_handle_account_query_account_by_account_id start");
 	GVariant* account_variant = NULL;
@@ -957,9 +1066,10 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1019,7 +1129,7 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path, const gchar *user_name, gchar *cookie)
+														  gchar *account_db_path, const gchar *user_name)
 {
 	_INFO("account_manager_handle_account_query_account_by_user_name start");
 
@@ -1028,9 +1138,10 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1092,7 +1203,7 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_package_name(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path, const gchar *package_name, gchar *cookie)
+														  gchar *account_db_path, const gchar *package_name)
 {
 	_INFO("account_manager_handle_account_query_account_by_package_name start");
 
@@ -1101,9 +1212,10 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1167,7 +1279,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
 														  gchar *account_db_path,
 														  const gchar *capability_type,
-														  gint capability_value, gchar *cookie)
+														  gint capability_value)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability start");
 
@@ -1177,9 +1289,10 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1243,7 +1356,7 @@ gboolean
 account_manager_handle_account_query_account_by_capability_type(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
 														  gchar *account_db_path,
-														  const gchar *capability_type, gchar *cookie)
+														  const gchar *capability_type)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability_type start");
 
@@ -1253,9 +1366,10 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1319,7 +1433,7 @@ gboolean
 account_manager_handle_account_query_capability_by_account_id(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
 														  gchar *account_db_path,
-														  const int account_id, gchar *cookie)
+														  const int account_id)
 {
 	_INFO("account_manager_handle_account_query_capability_by_account_id start");
 
@@ -1329,11 +1443,13 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
+
 
 	return_code = _account_db_open(0, (const char*)account_db_path);
 	if (return_code != ACCOUNT_ERROR_NONE)
@@ -1395,16 +1511,23 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
 															const int account_db_id,
-															const int sync_status, gchar *cookie)
+															const int sync_status)
 {
 	_INFO("account_manager_handle_account_update_sync_status_by_id start");
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1453,7 +1576,7 @@ RETURN:
 gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
-															const gchar* app_id, gchar *cookie)
+															const gchar* app_id)
 {
 	GSList* feature_record_list = NULL;
 	GVariant* feature_record_list_variant = NULL;
@@ -1464,9 +1587,10 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1525,7 +1649,7 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
 															const gchar* app_id,
-															const gchar* capability, gchar *cookie)
+															const gchar* capability)
 {
 	int is_supported = 0;
 
@@ -1534,9 +1658,10 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1585,7 +1710,7 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
 															GVariant *account_type_variant,
-															const gchar *app_id, gchar *cookie)
+															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_update_to_db_by_app_id start");
 
@@ -1593,9 +1718,16 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1645,7 +1777,7 @@ RETURN:
 gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
-															const gchar *app_id, gchar *cookie)
+															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_delete_by_app_id start");
 
@@ -1653,9 +1785,16 @@ gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *o
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1703,7 +1842,7 @@ RETURN:
 gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
-															const gchar *app_id, gchar *cookie)
+															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_app_id start");
 	GSList* label_list = NULL;
@@ -1713,9 +1852,10 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1765,7 +1905,7 @@ RETURN:
 gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
-															const gchar *app_id, gchar *cookie)
+															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_query_by_app_id start");
 	GVariant* account_type_variant = NULL;
@@ -1774,9 +1914,10 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1833,16 +1974,17 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path, const gchar *app_id, gchar *cookie)
+															gchar *account_db_path, const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_query_app_id_exist start");
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _CHECK_READ_LABEL, _READ_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -1892,16 +2034,23 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 															GDBusMethodInvocation *invocation,
 															gchar *account_db_path,
 															GVariant *account_data,
-															gint account_id, gchar *cookie)
+															gint account_id)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_id_ex start");
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_privilege_by_cookie(cookie, _DB_LABEL, _READ_WRITE_LABEL, true, pid);
+	int return_code = _check_priviliege_account_read(invocation);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
+		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+		goto RETURN;
+	}
+	return_code = _check_priviliege_account_write(invocation);
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
@@ -2101,23 +2250,32 @@ static bool _initialize_dbus()
     if(owner_id == 0)
     {
 			_INFO("gdbus own failed!!");
-			return false;	
+			return false;
 	}
 
 	_INFO("g_bus_own_name SUCCESS");
 	return true;
 }
 
+
+
 static void _initialize()
 {
 #if !GLIB_CHECK_VERSION(2,35,0)
 	g_type_init();
 #endif
+	int ret = -1;
 
 	if (_initialize_dbus() == false)
 	{	/* because dbus's initialize
 					failed, we cannot continue any more. */
 		_ERR("DBUS Initialization Failed");
+		exit(1);
+	}
+
+	ret = cynara_initialize(&p_cynara, NULL);
+	if(ret != CYNARA_API_SUCCESS) {
+		_ERR("CYNARA Initialization fail");
 		exit(1);
 	}
 }
@@ -2133,6 +2291,8 @@ int main()
 	_initialize();
 
 	g_main_loop_run(mainloop);
+
+	cynara_finish(p_cynara);
 
 	_INFO("Ending Accounts SVC");
 	return 0;
