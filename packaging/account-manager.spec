@@ -9,20 +9,18 @@ Source0:    account-manager-%{version}.tar.gz
 Source1:    accounts-service.service
 
 BuildRequires:  cmake
-BuildRequires:  pkgconfig(sqlite3)
 BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
-BuildRequires:  pkgconfig(dbus-1)
 BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:	pkgconfig(glib-2.0) >= 2.26
 BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(gio-unix-2.0)
-BuildRequires:  pkgconfig(security-server)
+BuildRequires:  pkgconfig(cynara-client)
+BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(accounts-svc)
-BuildRequires:  dbus-python
 BuildRequires:  python-xml
 BuildRequires:  python-devel
 
