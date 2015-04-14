@@ -89,23 +89,19 @@ then
 '
 fi
 
-mkdir -p /opt/usr/share/account
 chown root:root %{TZ_SYS_DB}/.account.db
 chown root:root %{TZ_SYS_DB}/.account.db-journal
 
-chmod 600 /opt/usr/dbspace/.account.db
-chmod 600 /opt/usr/dbspace/.account.db-journal
+chmod 644 %{TZ_SYS_DB}/.account.db
+chmod 644 %{TZ_SYS_DB}/.account.db-journal
 
 #set message key value to NULL
 #vconftool set -t string db/account/msg '' -g 6514
 vconftool set -tf string db/account/msg '' -s libaccounts-svc -u 200 -g 5000
 
 #smack labeling
-if [ -f /usr/lib/rpm-plugins/msm.so ]
-then
-	chsmack -a 'libaccounts-svc::db' /opt/usr/dbspace/.account.db-journal
-	chsmack -a 'libaccounts-svc::db' /opt/usr/dbspace/.account.db
-fi
+chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
+chsmack -a 'System' %{TZ_SYS_DB}/.account.db
 
 
 %postun -p /sbin/ldconfig
@@ -116,11 +112,11 @@ fi
 %manifest libaccounts-svc.manifest
 %defattr(-,root,root,-)
 %attr(0755,root,root) %{_bindir}/account-svcd
-%attr(-,root,root) %{_libdir}/systemd/system/accounts-service.service
-%attr(-,root,root) %{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
+%attr(-,root,root) %{_unitdir}/accounts-service.service
+%attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
 
 %files devel
 %defattr(-,root,root,-)
 %attr(0755,root,root) %{_bindir}/account-svcd
-%attr(-,root,root) %{_libdir}/systemd/system/accounts-service.service
-%attr(-,root,root) %{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
+%attr(-,root,root) %{_unitdir}/accounts-service.service
+%attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service

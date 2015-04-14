@@ -172,14 +172,14 @@ int __get_information_for_cynara_check(GDBusMethodInvocation *invocation, char *
 		return -1;
 	}
 
-	ret = cynara_creds_gdbus_get_user(gdbus_conn, sender, CLIENT_METHOD_SMACK, user);
+	ret = cynara_creds_gdbus_get_user(gdbus_conn, sender, CLIENT_METHOD_DEFAULT, user);
 	if (ret != CYNARA_API_SUCCESS)
 	{
 		_ERR("cynara_creds_gdbus_get_user failed, ret = %d", ret);
 		return -1;
 	}
 
-	ret = cynara_creds_gdbus_get_client(gdbus_conn, sender, CLIENT_METHOD_SMACK, client);
+	ret = cynara_creds_gdbus_get_client(gdbus_conn, sender, USER_METHOD_DEFAULT, client);
 	if (ret != CYNARA_API_SUCCESS)
 	{
 		_ERR("cynara_creds_gdbus_get_client failed, ret = %d", ret);
