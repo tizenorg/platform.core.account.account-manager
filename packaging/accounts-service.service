@@ -1,12 +1,10 @@
 [Unit]
 Description=Accounts service
-After=tizen-runtime.target
-Requires=tizen-runtime.target
 
 [Service]
 User=system
-Gruop=system
-SmackProcessLabel=libaccounts-svc
+Group=system
+
 Type=simple
 ExecStart=/usr/bin/account-svcd
 Restart=always

@@ -1,29 +1,9 @@
 <manifest>
-	<define>
-		<domain name="libaccounts-svc"/>
-		<provide>
-		    <label name="libaccounts-svc::db"/>
-		    <label name="libaccounts-svc::check_read"/>
-		</provide>
-		<request>
-			<smack request="libaccounts-svc::db" type="rw" />
-			<smack request="pkgmgr-server" type="rx" />
-			<smack request="pkgmgr::db" type="rl" />
-			<smack request="system::vconf" type="x" />
-			<smack request="system::vconf_inhouse" type="rl" />
-			<smack request="device::app_logging" type="w" />
-			<smack request="device::sys_logging" type="w" />
-			<smack request="security-server::api-cookie-check" type="w" />
-			<smack request="dbus" type="rwx"/>
-		</request>
-	</define>
 	<request>
-		<domain name="libaccounts-svc"/>
+		<domain name="_"/>
 	</request>
 	<assign>
-		<filesystem path="/usr/lib/libaccounts-svc.so.0" label="_" />
-		<filesystem path="/usr/lib/libaccounts-svc.so.0.3.0" label="_" />
-		<filesystem path="/opt/usr/dbspace/.account.db" label="libaccounts-svc::db"/>
-		<filesystem path="/opt/usr/dbspace/.account.db-journal" label="libaccounts-svc::db"/>
+		<filesystem path="TZ_SYS_DB/.account.db" label="System"/>
+		<filesystem path="TZ_SYS_DB/.account.db-journal" label="System"/>
 	</assign>
 </manifest>
