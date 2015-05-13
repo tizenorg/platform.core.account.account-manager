@@ -60,9 +60,9 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
-mkdir -p %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants
-install -m 0644 %SOURCE1 %{buildroot}%{_libdir}/systemd/system/accounts-service.service
-ln -s ../accounts-service.service %{buildroot}%{_libdir}/systemd/system/multi-user.target.wants/accounts-service.service
+mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
+install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/accounts-service.service
+ln -s ../accounts-service.service %{buildroot}%{_unitdir}/multi-user.target.wants/accounts-service.service
 
 rm -rf %{buildroot}/usr/lib/account-manager
 
