@@ -32,13 +32,6 @@ Requires(postun): /sbin/ldconfig
 %description
 Account Daemon: no
 
-%package devel
-Summary:    Development files for %{name}
-Group:      Development/Libraries
-Requires:   %{name} = %{version}-%{release}
-%description devel
-Development files for %{name}
-
 %prep
 %setup -q
 
@@ -115,8 +108,3 @@ chsmack -a 'System' %{TZ_SYS_DB}/.account.db
 %attr(-,root,root) %{_unitdir}/accounts-service.service
 %attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
 
-%files devel
-%defattr(-,root,root,-)
-%attr(0755,root,root) %{_bindir}/account-svcd
-%attr(-,root,root) %{_unitdir}/accounts-service.service
-%attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
