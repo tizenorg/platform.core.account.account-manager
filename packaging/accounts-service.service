@@ -2,13 +2,13 @@
 Description=Accounts service
 
 [Service]
-User=system
-Group=system
-
+#User=system
+#Group=system
 Type=simple
 ExecStart=/usr/bin/account-svcd
 Restart=always
 RestartSec=1
 
+
 [Install]
-WantedBy=multi-user.target
+WantedBy=default.target

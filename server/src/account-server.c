@@ -28,15 +28,14 @@
 #include <cynara-session.h>
 #include <cynara-creds-gdbus.h>
 
-#include <gio/gio.h>
+#include <dbg.h>
+#include <account_ipc_marshal.h>
+#include <account-mgr-stub.h>
+#include <account-private.h>
+#include <account-error.h>
 
-#include "dbg.h"
+#include "account-server-private.h"
 #include "account-server-db.h"
-#include "account_ipc_marshal.h"
-#include "account-mgr-stub.h"
-#include "account-private.h"
-#include "account-error.h"
-
 #define _PRIVILEGE_ACCOUNT_READ "http://tizen.org/privilege/account.read"
 #define _PRIVILEGE_ACCOUNT_WRITE "http://tizen.org/privilege/account.write"
 
@@ -244,6 +243,7 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 {
 	_INFO("account_manager_account_add start");
 	int db_id = -1;
+	account_s* account = NULL;
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
@@ -262,7 +262,7 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
@@ -270,7 +270,7 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 		goto RETURN;
 	}
 
-	account_s* account = umarshal_account(account_data);
+	account = umarshal_account(account_data);
 	if (account == NULL)
 	{
 		_ERR("account unmarshalling failed");
@@ -309,6 +309,8 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_free_account_items(account);
+
 	return true;
 }
 
@@ -328,10 +330,10 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -393,10 +395,10 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -446,6 +448,7 @@ RETURN:
 gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path, GVariant *account_type_data, gpointer user_data)
 {
 	int db_id = -1;
+	account_type_s* account_type = NULL;
 
 	_INFO("account_manager_account_type_add start");
 
@@ -465,15 +468,15 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	account_type_s* account_type = umarshal_account_type(account_type_data);
+	account_type = umarshal_account_type(account_type_data);
 	if (account_type == NULL)
 	{
 		_ERR("account_type unmarshalling failed");
@@ -511,6 +514,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_type_free_account_type_items(account_type);
 	return true;
 }
 
@@ -537,10 +541,10 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -603,10 +607,10 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -668,10 +672,10 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -717,6 +721,7 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 															gint account_id)
 {
 	_INFO("account_manager_account_update_to_db_by_id start");
+	account_s* account = NULL;
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
@@ -734,15 +739,15 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	account_s* account = umarshal_account(account_data);
+	account = umarshal_account(account_data);
 	if (account == NULL)
 	{
 		_ERR("Unmarshal failed");
@@ -781,6 +786,8 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_free_account_items(account);
+
 	return true;
 }
 
@@ -792,6 +799,7 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 															const gchar *package_name)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_user_name start");
+	account_s* account = NULL;
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
@@ -809,15 +817,15 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	account_s* account = umarshal_account(account_data);
+	account = umarshal_account(account_data);
 	if (account == NULL)
 	{
 		_ERR("Unmarshal failed");
@@ -856,6 +864,8 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_free_account_items(account);
+
 	return true;
 }
 
@@ -878,10 +888,10 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -939,10 +949,10 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1013,10 +1023,10 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1061,6 +1071,7 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 {
 	_INFO("account_manager_handle_account_query_account_by_account_id start");
 	GVariant* account_variant = NULL;
+	account_s* account_data = NULL;
 
 	guint pid = _get_client_pid(invocation);
 
@@ -1073,15 +1084,15 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	account_s* account_data = create_empty_account_instance();
+	account_data = create_empty_account_instance();
 	if (account_data == NULL)
 	{
 		_ERR("out of memory");
@@ -1123,6 +1134,8 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_free_account_items(account_data);
+
 	return true;
 }
 
@@ -1145,10 +1158,10 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1219,10 +1232,10 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1296,10 +1309,10 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1373,10 +1386,10 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1450,11 +1463,10 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 		goto RETURN;
 	}
 
-
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1531,10 +1543,10 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1594,10 +1606,10 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1665,10 +1677,10 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1713,6 +1725,7 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_update_to_db_by_app_id start");
+	account_type_s* account_type = NULL;
 
 	guint pid = _get_client_pid(invocation);
 
@@ -1731,15 +1744,15 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	account_type_s* account_type = umarshal_account_type(account_type_variant);
+	account_type = umarshal_account_type(account_type_variant);
 
 	_INFO("before _account_type_update_to_db_by_app_id");
 	return_code = _account_type_update_to_db_by_app_id(account_type, app_id);
@@ -1771,6 +1784,8 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_type_free_account_type_items(account_type);
+
 	return true;
 }
 
@@ -1798,10 +1813,10 @@ gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *o
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1859,10 +1874,10 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1921,10 +1936,10 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1988,10 +2003,10 @@ gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager 
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, (const char*)account_db_path);
+	return_code = _account_db_open(0, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -2037,6 +2052,7 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 															gint account_id)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_id_ex start");
+	account_s* account = NULL;
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -2054,15 +2070,15 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, (const char*)account_db_path);
+	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	account_s* account = umarshal_account(account_data);
+	account = umarshal_account(account_data);
 	if (account == NULL)
 	{
 		_ERR("Unmarshal failed");
@@ -2100,6 +2116,8 @@ RETURN:
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
 		return_code = ACCOUNT_ERROR_NONE;
 	}
+
+	_account_free_account_items(account);
 
 	return true;
 }
@@ -2212,6 +2230,10 @@ on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer user_d
 		_INFO("connecting account signals end");
 
 		g_dbus_object_manager_server_set_connection(account_mgr_server_mgr, connection);
+		if( connection == NULL ) {
+			_INFO("g_dbus_object_manager_server_set_connection failed");
+		}
+		_INFO("on_bus_acquired end [%s]", name);
 }
 
 static void
@@ -2257,8 +2279,6 @@ static bool _initialize_dbus()
 	return true;
 }
 
-
-
 static void _initialize()
 {
 #if !GLIB_CHECK_VERSION(2,35,0)
@@ -2288,9 +2308,15 @@ int main()
 
 	mainloop = g_main_loop_new(NULL, FALSE);
 
+	_INFO("g_main_loop_new");
+
 	_initialize();
 
+	_INFO("_initialize");
+
 	g_main_loop_run(mainloop);
+
+	_INFO("g_main_loop_run");
 
 	cynara_finish(p_cynara);
 

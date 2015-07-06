@@ -18,15 +18,12 @@
 
 #ifndef __ACC_SERVER_DB_H__
 
-#include <db-util.h>
-#include "account-private.h"
-
-typedef sqlite3_stmt* account_stmt;
+#include <account-private.h>
 
 //ACCOUNT_TABLE
 #define ACCOUNT_SCHEMA	"create table account \n"\
 	"(\n"\
-"id INTEGER PRIMARY KEY, "\
+"_id INTEGER PRIMARY KEY, "\
 "user_name TEXT, "\
 "email_address TEXT, "\
 "display_name TEXT, "\
@@ -99,7 +96,7 @@ typedef sqlite3_stmt* account_stmt;
 
 
 int _account_insert_to_db(account_s* account, int pid, int *account_id);
-int _account_db_open(int mode, const char* account_db_path);
+int _account_db_open(int mode, int pid);
 int _account_db_close(void);
 int _account_type_insert_to_db(account_type_s* account_type, int* account_type_id);
 GSList* _account_db_query_all(int pid);

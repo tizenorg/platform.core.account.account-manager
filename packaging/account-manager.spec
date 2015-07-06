@@ -7,9 +7,10 @@ Group:      Social & Content/Other
 License:    Apache-2.0
 Source0:    account-manager-%{version}.tar.gz
 Source1:    accounts-service.service
+Source2:    org.tizen.account.manager.service
+Source3:	org.tizen.account.manager.conf
 
 BuildRequires:  cmake
-BuildRequires:  pkgconfig(glib-2.0)
 BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgconfig(capi-base-common)
@@ -17,13 +18,12 @@ BuildRequires:  pkgconfig(pkgmgr-info)
 BuildRequires:  pkgconfig(aul)
 BuildRequires:	pkgconfig(glib-2.0) >= 2.26
 BuildRequires:  pkgconfig(gio-2.0)
-BuildRequires:  pkgconfig(gio-unix-2.0)
+BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(cynara-creds-gdbus)
+BuildRequires:  pkgconfig(account-common)
 BuildRequires:  pkgconfig(accounts-svc)
-BuildRequires:  python-xml
-BuildRequires:  python-devel
 
 Requires(post): /sbin/ldconfig
 Requires(post): /usr/bin/sqlite3
@@ -34,6 +34,7 @@ Account Daemon: no
 
 %prep
 %setup -q
+cp %{SOURCE2} .
 
 %build
 #export   CFLAGS+=" -Wextra -Wcast-align -Wcast-qual -Wshadow -Wwrite-strings -Wswitch-default"
@@ -44,8 +45,9 @@ Account Daemon: no
 #export   CFLAGS+=" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-strict-aliasing -fno-unroll-loops -fsigned-char -fstrict-overflow -fno-common"
 #export CXXFLAGS+=" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-strict-aliasing -fno-unroll-loops -fsigned-char -fstrict-overflow"
 
-export CFLAGS="${CFLAGS} -fPIC -fvisibility=hidden"
-cmake . -DCMAKE_INSTALL_PREFIX=/usr
+export CFLAGS="${CFLAGS} -fvisibility=hidden -fPIE"
+export LDFLAGS="${LDFLAGS} -pie"
+cmake . -DCMAKE_INSTALL_PREFIX=/usr -DLIBDIR=%{_libdir} -DBINDIR=%{_bindir}
 
 make %{?jobs:-j%jobs}
 
@@ -53,11 +55,19 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
-mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
+mkdir -p %{buildroot}%{_unitdir}/default.target.wants
 install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/accounts-service.service
-ln -s ../accounts-service.service %{buildroot}%{_unitdir}/multi-user.target.wants/accounts-service.service
+ln -s ../accounts-service.service %{buildroot}%{_unitdir}/default.target.wants/accounts-service.service
+#ln -s ../accounts-service.service %{buildroot}%{_unitdir}/multi-user.target.wants/accounts-service.service
 
 rm -rf %{buildroot}/usr/lib/account-manager
+
+
+mkdir -p %{buildroot}%{_unitdir}/dbus-1/system-services
+install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/dbus-1/system-services/org.tizen.account.manager.service
+
+mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
+install -m 0644 %{SOURCE3} %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 
 %post
 /sbin/ldconfig
@@ -72,12 +82,12 @@ then
         CREATE TABLE if not exists account_type (_id INTEGER PRIMARY KEY AUTOINCREMENT, AppId TEXT,
         ServiceProviderId TEXT, IconPath TEXT, SmallIconPath TEXT, MultipleAccountSupport INT);
         CREATE TABLE if not exists account_custom (AccountId INTEGER, AppId TEXT, Key TEXT, Value TEXT);
-        CREATE TABLE if not exists account (id INTEGER PRIMARY KEY AUTOINCREMENT, user_name TEXT, email_address TEXT, display_name TEXT, icon_path TEXT,
+        CREATE TABLE if not exists account (_id INTEGER PRIMARY KEY AUTOINCREMENT, user_name TEXT, email_address TEXT, display_name TEXT, icon_path TEXT,
         source TEXT, package_name TEXT, access_token TEXT, domain_name TEXT, auth_type INTEGER, secret INTEGER, sync_support INTEGER,
         txt_custom0 TEXT, txt_custom1 TEXT, txt_custom2 TEXT, txt_custom3 TEXT, txt_custom4 TEXT,
         int_custom0 INTEGER, int_custom1 INTEGER, int_custom2 INTEGER, int_custom3 INTEGER, int_custom4 INTEGER);
         CREATE TABLE if not exists capability (_id INTEGER PRIMARY KEY AUTOINCREMENT, key TEXT, value INTEGER,
-	package_name TEXT, user_name TEXT,  account_id INTEGER, FOREIGN KEY (account_id) REFERENCES account(id));
+	package_name TEXT, user_name TEXT,  account_id INTEGER, FOREIGN KEY (account_id) REFERENCES account(_id));
 	CREATE TABLE if not exists provider_feature (app_id TEXT, key TEXT);
 '
 fi
@@ -90,11 +100,11 @@ chmod 600 %{TZ_SYS_DB}/.account.db-journal
 
 #set message key value to NULL
 #vconftool set -t string db/account/msg '' -g 6514
-vconftool set -tf string db/account/msg '' -s libaccounts-svc -u 200 -g 5000
+#vconftool set -tf string db/account/msg '' -s libaccounts-svc -u 200 -g 5000
 
 #smack labeling
-chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
-chsmack -a 'System' %{TZ_SYS_DB}/.account.db
+#chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
+#chsmack -a 'System' %{TZ_SYS_DB}/.account.db
 
 
 %postun -p /sbin/ldconfig
@@ -102,9 +112,12 @@ chsmack -a 'System' %{TZ_SYS_DB}/.account.db
 
 
 %files
-%manifest libaccounts-svc.manifest
-%defattr(-,root,root,-)
+%manifest account-svcd.manifest
+%defattr(-,system,system,-)
+%config %{_sysconfdir}/dbus-1/system.d/org.tizen.account.manager.conf
 %attr(0755,root,root) %{_bindir}/account-svcd
 %attr(-,root,root) %{_unitdir}/accounts-service.service
-%attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
+#%attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
+%attr(-,root,root) %{_unitdir}/default.target.wants/accounts-service.service
+%attr(-,root,root) %{_unitdir}/dbus-1/system-services/org.tizen.account.manager.service
 

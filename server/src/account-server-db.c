@@ -20,7 +20,6 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
-#include <account.h>
 #include <glib.h>
 #include <db-util.h>
 #include <pthread.h>
@@ -30,10 +29,13 @@
 #include <aul.h>
 #include <unistd.h>
 
-#include "account-private.h"
+#include <dbg.h>
+#include <account_ipc_marshal.h>
+#include <account-private.h>
+#include <account.h>
+#include <account-error.h>
+#include "account-server-private.h"
 #include "account-server-db.h"
-#include "dbg.h"
-#include "account_ipc_marshal.h"
 
 typedef sqlite3_stmt* account_stmt;
 
@@ -57,9 +59,11 @@ typedef sqlite3_stmt* account_stmt;
 #define ACCOUNT_DB_OPEN_READONLY 0
 #define ACCOUNT_DB_OPEN_READWRITE 1
 
+#define MAX_TEXT 4096
+
 #define _TIZEN_PUBLIC_
 #ifndef _TIZEN_PUBLIC_
-#include <csc-feature.h>
+//#include <csc-feature.h>
 
 #endif
 
@@ -68,8 +72,6 @@ static sqlite3* g_hAccountDB2 = NULL;
 pthread_mutex_t account_mutex = PTHREAD_MUTEX_INITIALIZER;
 
 static char *_account_get_text(const char *text_data);
-static int _account_gslist_free(GSList* list);
-static int _account_glist_free(GList* list);
 static const char *_account_query_table_column_text(account_stmt pStmt, int pos);
 static int _account_insert_custom(account_s *account, int account_id);
 static int _account_update_custom(account_s *account, int account_id);
@@ -166,7 +168,7 @@ static char* _account_get_current_appid(int pid)
 	ret = aul_app_get_appid_bypid(pid, appid, sizeof(appid));
 
 	if(ret < 0){
-		ACCOUNT_ERROR("fail to get current appid\n");
+		ACCOUNT_ERROR("fail to get current appid ret=[%d], appid=%s\n", ret, appid);
 	}
 
 	_INFO("");
@@ -410,6 +412,7 @@ static int _remove_sensitive_info_from_non_owning_account(int caller_pid, accoun
 			account->access_token = NULL;
 
 		}
+		_ACCOUNT_FREE(caller_package_name);
 		return ACCOUNT_ERROR_NONE;
 	}
 	return ACCOUNT_ERROR_INVALID_PARAMETER;
@@ -417,6 +420,8 @@ static int _remove_sensitive_info_from_non_owning_account(int caller_pid, accoun
 
 static int _remove_sensitive_info_from_non_owning_account_list(int caller_pid, GList *account_list)
 {
+	int return_code = ACCOUNT_ERROR_NONE;
+
 	if (account_list == NULL)
 	{
 		_ERR("Null input");
@@ -427,13 +432,17 @@ static int _remove_sensitive_info_from_non_owning_account_list(int caller_pid, G
 	for (list_iter = account_list; list_iter != NULL; list_iter = g_list_next(list_iter))
 	{
 		account_s *account = (account_s *) list_iter->data;
-		return _remove_sensitive_info_from_non_owning_account(caller_pid, account);
+		int ret = _remove_sensitive_info_from_non_owning_account(caller_pid, account);
+		if( ret != ACCOUNT_ERROR_NONE)
+			return_code = ret;
 	}
-	return ACCOUNT_ERROR_INVALID_PARAMETER;
+	return return_code;
 }
 
 static int _remove_sensitive_info_from_non_owning_account_slist(int caller_pid, GSList *account_list)
 {
+	int return_code = ACCOUNT_ERROR_NONE;
+
 	if (account_list == NULL)
 	{
 		_ERR("Null input");
@@ -444,9 +453,11 @@ static int _remove_sensitive_info_from_non_owning_account_slist(int caller_pid, 
 	for (list_iter = account_list; list_iter != NULL; list_iter = g_slist_next(list_iter))
 	{
 		account_s *account = (account_s *) list_iter->data;
-		return _remove_sensitive_info_from_non_owning_account(caller_pid, account);
+		int ret = _remove_sensitive_info_from_non_owning_account(caller_pid, account);
+		if( ret != ACCOUNT_ERROR_NONE)
+			return_code = ret;
 	}
-	return ACCOUNT_ERROR_INVALID_PARAMETER;
+	return return_code;
 }
 
 static const char *_account_db_err_msg()
@@ -738,16 +749,19 @@ int _account_db_handle_close(sqlite3* hDB)
 	return ret;
 }
 
-int _account_db_open(int mode, const char* account_db_path)
+int _account_db_open(int mode, int pid)
 {
 	int  rc = 0;
 	int ret = -1;
-	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	char account_db_path[256] = {0, };
 
-	ACCOUNT_MEMSET(query, 0x00, sizeof(query));
+	_INFO( "start _account_db_open()");
+
+	ACCOUNT_MEMSET(account_db_path, 0x00, sizeof(account_db_path));
+	ACCOUNT_SNPRINTF(account_db_path, sizeof(account_db_path), "%s", ACCOUNT_DB_PATH);
 
 	if( g_hAccountDB ) {
-		ACCOUNT_ERROR( "Account database is using in another app. %x", g_hAccountDB );
+		_ERR( "Account database is using in another app. %x", g_hAccountDB );
 		return ACCOUNT_ERROR_DATABASE_BUSY;
 	}
 
@@ -779,6 +793,7 @@ int _account_db_open(int mode, const char* account_db_path)
 		return ACCOUNT_ERROR_DB_NOT_OPENED;
 	}
 
+	_INFO( "end _account_db_open()");
 	return ACCOUNT_ERROR_NONE;
 }
 
@@ -800,106 +815,6 @@ int _account_db_close(void)
 	g_hAccountDB = NULL;
 
 	return ret;
-}
-
-static int _account_free_capability_items(account_capability_s *data)
-{
-	_ACCOUNT_FREE(data->type);
-	_ACCOUNT_FREE(data->package_name);
-	_ACCOUNT_FREE(data->user_name);
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_custom_item_free(account_custom_s *data)
-{
-	_ACCOUNT_FREE(data->app_id);
-	_ACCOUNT_FREE(data->key);
-	_ACCOUNT_FREE(data->value);
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_custom_gslist_free(GSList* list)
-{
-	if(!list){
-		return ACCOUNT_ERROR_INVALID_PARAMETER;
-	}
-
-	GSList* iter;
-
-	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
-		account_custom_s *custom_data = (account_custom_s*)iter->data;
-		_account_custom_item_free(custom_data);
-		_ACCOUNT_FREE(custom_data);
-	}
-
-	g_slist_free(list);
-	list = NULL;
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_free_account_items(account_s *data)
-{
-	_ACCOUNT_FREE(data->user_name);
-	_ACCOUNT_FREE(data->email_address);
-	_ACCOUNT_FREE(data->display_name);
-	_ACCOUNT_FREE(data->icon_path);
-	_ACCOUNT_FREE(data->source);
-	_ACCOUNT_FREE(data->package_name);
-	_ACCOUNT_FREE(data->domain_name);
-	_ACCOUNT_FREE(data->access_token);
-
-	int i;
-	for(i=0;i<USER_TXT_CNT;i++)
-		_ACCOUNT_FREE(data->user_data_txt[i]);
-
-	_account_gslist_free(data->capablity_list);
-	_account_glist_free(data->account_list);
-	_account_custom_gslist_free(data->custom_list);
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_gslist_free(GSList* list)
-{
-	if(!list){
-		return ACCOUNT_ERROR_INVALID_PARAMETER;
-	}
-
-	GSList* iter;
-
-	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
-		account_capability_s *cap_data = (account_capability_s*)iter->data;
-		_account_free_capability_items(cap_data);
-		_ACCOUNT_FREE(cap_data);
-	}
-
-	g_slist_free(list);
-	list = NULL;
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_glist_free(GList* list)
-{
-	if(!list){
-		return ACCOUNT_ERROR_INVALID_PARAMETER;
-	}
-
-	GList* iter;
-
-	for (iter = list; iter != NULL; iter = g_list_next(iter)) {
-		account_s *account_record = (account_s*)iter->data;
-		_account_free_account_items(account_record);
-		_ACCOUNT_FREE(account_record);
-	}
-
-	g_list_free(list);
-	list = NULL;
-
-	return ACCOUNT_ERROR_NONE;
 }
 
 static int _account_check_duplicated(account_s *data, const char* verified_appid)
@@ -1219,7 +1134,7 @@ static int _account_insert_capability(account_s *account, int account_id)
 		return ACCOUNT_ERROR_NONE;
 	}
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where id=%d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where _id=%d", ACCOUNT_TABLE, account_id);
 
 	_INFO("_account_insert_capability _account_get_record_count [%s]", query);
 	rc = _account_get_record_count(query);
@@ -1294,7 +1209,7 @@ static int _account_update_capability(account_s *account, int account_id)
 		return ACCOUNT_ERROR_NONE;
 	}
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where id=%d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where _id=%d", ACCOUNT_TABLE, account_id);
 
 	rc = _account_get_record_count(query);
 
@@ -1938,13 +1853,13 @@ int _account_insert_to_db(account_s* account, int pid, int *account_id)
 	_INFO("");
 	char* verified_appid = NULL;
 	error_code  = _account_check_account_type_with_appid_group(appid, &verified_appid);//FIX
+	_ACCOUNT_FREE(appid);
 	if(error_code != ACCOUNT_ERROR_NONE)
 	{
-		_INFO("");
+		_ERR("error_code = %d", error_code);
 		ret_transaction = _account_end_transaction(FALSE);
 		ACCOUNT_ERROR("App id is not registered in account type DB, transaction ret (%x)!!!!\n", ret_transaction);
 		_ACCOUNT_FREE(verified_appid);
-		_ACCOUNT_FREE(appid);
 		pthread_mutex_unlock(&account_mutex);
 		return error_code;
 	}
@@ -2027,7 +1942,7 @@ int _account_insert_to_db(account_s* account, int pid, int *account_id)
 	char buf[64]={0,};
 	ACCOUNT_SNPRINTF(buf, sizeof(buf), "%s:%d", ACCOUNT_NOTI_NAME_INSERT, *account_id);
 	_account_insert_delete_update_notification_send(buf);
-	_INFO("(%s)-(%d) account _notification_send.");
+	_INFO("account _notification_send end.");
 
 	return ACCOUNT_ERROR_NONE;
 
@@ -2320,7 +2235,7 @@ static int _account_get_package_name_from_account_id(int account_id, char **pack
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE id = %d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE _id = %d", ACCOUNT_TABLE, account_id);
 	hstmt = _account_prepare_query(query);
 
 	rc = _account_query_step(hstmt);
@@ -2409,7 +2324,7 @@ static int _account_update_account(int pid, account_s *account, int account_id)
 
 	ACCOUNT_MEMSET(query, 0x00, sizeof(query));
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE id = %d ", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE _id = %d ", ACCOUNT_TABLE, account_id);
 
 	count = _account_get_record_count(query);
 	if (count <= 0) {
@@ -2429,7 +2344,7 @@ static int _account_update_account(int pid, account_s *account, int account_id)
 	ACCOUNT_SNPRINTF(query, sizeof(query), "UPDATE %s SET user_name=?, email_address =?, display_name =?, "
 			"icon_path =?, source =?, package_name =? , access_token =?, domain_name =?, auth_type =?, secret =?, sync_support =?,"
 			"txt_custom0=?, txt_custom1=?, txt_custom2=?, txt_custom3=?, txt_custom4=?, "
-			"int_custom0=?, int_custom1=?, int_custom2=?, int_custom3=?, int_custom4=? WHERE id=? ", ACCOUNT_TABLE);
+			"int_custom0=?, int_custom1=?, int_custom2=?, int_custom3=?, int_custom4=? WHERE _id=? ", ACCOUNT_TABLE);
 
 	hstmt = _account_prepare_query(query);
 
@@ -2504,7 +2419,7 @@ static int _account_update_account_ex(account_s *account, int account_id)
 
 	ACCOUNT_MEMSET(query, 0x00, sizeof(query));
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE id = %d ", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE _id = %d ", ACCOUNT_TABLE, account_id);
 
 	count = _account_get_record_count(query);
 	if (count <= 0) {
@@ -2524,7 +2439,7 @@ static int _account_update_account_ex(account_s *account, int account_id)
 	ACCOUNT_SNPRINTF(query, sizeof(query), "UPDATE %s SET user_name=?, email_address =?, display_name =?, "
 			"icon_path =?, source =?, package_name =? , access_token =?, domain_name =?, auth_type =?, secret =?, sync_support =?,"
 			"txt_custom0=?, txt_custom1=?, txt_custom2=?, txt_custom3=?, txt_custom4=?, "
-			"int_custom0=?, int_custom1=?, int_custom2=?, int_custom3=?, int_custom4=? WHERE id=? ", ACCOUNT_TABLE);
+			"int_custom0=?, int_custom1=?, int_custom2=?, int_custom3=?, int_custom4=? WHERE _id=? ", ACCOUNT_TABLE);
 
 	hstmt = _account_prepare_query(query);
 
@@ -2746,7 +2661,7 @@ int _account_update_sync_status_by_id(int account_db_id, const int sync_status)
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where id=%d", ACCOUNT_TABLE, account_db_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where _id=%d", ACCOUNT_TABLE, account_db_id);
 
 	rc = _account_get_record_count(query);
 
@@ -2764,7 +2679,7 @@ int _account_update_sync_status_by_id(int account_db_id, const int sync_status)
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "UPDATE %s SET sync_support=? WHERE id = %d", ACCOUNT_TABLE, account_db_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "UPDATE %s SET sync_support=? WHERE _id = %d", ACCOUNT_TABLE, account_db_id);
 	hstmt = _account_prepare_query(query);
 
 	_account_query_bind_int(hstmt, count, sync_status);
@@ -2807,7 +2722,7 @@ CATCH:
 
 int _account_query_account_by_account_id(int pid, int account_db_id, account_s *account_record)
 {
-	ACCOUNT_DEBUG("account_db_id=[%d]", account_db_id);
+	_INFO("_account_query_account_by_account_id() start, account_db_id=[%d]", account_db_id);
 
 	int				error_code = ACCOUNT_ERROR_NONE;
 	account_stmt 	hstmt = NULL;
@@ -2822,10 +2737,12 @@ int _account_query_account_by_account_id(int pid, int account_db_id, account_s *
 
 	ACCOUNT_DEBUG("starting db operations");
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE id = %d", ACCOUNT_TABLE, account_db_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE _id = %d", ACCOUNT_TABLE, account_db_id);
 	hstmt = _account_prepare_query(query);
+	rc = _account_db_err_code();
+	_INFO("after _account_prepare_query, rc=[%d]", rc);
 
-	if( _account_db_err_code() == SQLITE_PERM ){
+	if( rc == SQLITE_PERM ){
 		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
 		return ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
@@ -2999,7 +2916,9 @@ CATCH:
 	if (account_head)
 	{
 		_remove_sensitive_info_from_non_owning_account_list(pid, account_head->account_list);
-		return account_head->account_list;
+		GList* result = account_head->account_list;
+		_ACCOUNT_FREE(account_head);
+		return result;
 	}
 	return NULL;
 }
@@ -3024,7 +2943,7 @@ _account_query_account_by_capability(int pid, const char* capability_type, const
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE id IN (SELECT account_id from %s WHERE key=? AND value=?)", ACCOUNT_TABLE, CAPABILITY_TABLE);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE _id IN (SELECT account_id from %s WHERE key=? AND value=?)", ACCOUNT_TABLE, CAPABILITY_TABLE);
 
 	hstmt = _account_prepare_query(query);
 
@@ -3098,13 +3017,22 @@ _account_query_account_by_capability(int pid, const char* capability_type, const
 	}
 
 
-	error_code = ACCOUNT_ERROR_NONE;
+	*error_code = ACCOUNT_ERROR_NONE;
 
 CATCH:
 	if (hstmt != NULL) {
 		rc = _account_query_finalize(hstmt);
-		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {*error_code = rc;}, NULL, ("finalize error"));
+		if ( rc != ACCOUNT_ERROR_NONE ) {
+			*error_code = rc;
+			_ERR("finalize error");
+		}
 		hstmt = NULL;
+	}
+
+	if( *error_code != ACCOUNT_ERROR_NONE && account_head ) {
+		_account_glist_free(account_head->account_list);
+		_ACCOUNT_FREE(account_head);
+		account_head = NULL;
 	}
 
 	pthread_mutex_unlock(&account_mutex);
@@ -3112,7 +3040,9 @@ CATCH:
 	if (account_head)
 	{
 		_remove_sensitive_info_from_non_owning_account_list(pid, account_head->account_list);
-		return account_head->account_list;
+		GList* result = account_head->account_list;
+		_ACCOUNT_FREE(account_head);
+		return result;
 	}
 	return NULL;
 }
@@ -3130,7 +3060,7 @@ GList* _account_query_account_by_capability_type(int pid, const char* capability
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE id IN (SELECT account_id from %s WHERE key=?)", ACCOUNT_TABLE, CAPABILITY_TABLE);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE _id IN (SELECT account_id from %s WHERE key=?)", ACCOUNT_TABLE, CAPABILITY_TABLE);
 
 	hstmt = _account_prepare_query(query);
 
@@ -3206,8 +3136,17 @@ CATCH:
 	if (hstmt != NULL)
 	{
 		rc = _account_query_finalize(hstmt);
-		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {*error_code = rc;}, NULL, ("finalize error"));
+		if (rc != ACCOUNT_ERROR_NONE) {
+			*error_code = rc;
+			_ERR("finalize error");
+		}
 		hstmt = NULL;
+	}
+
+	if( (*error_code != ACCOUNT_ERROR_NONE) && account_head ) {
+		_account_glist_free(account_head->account_list);
+		_ACCOUNT_FREE(account_head);
+		account_head = NULL;
 	}
 
 	pthread_mutex_unlock(&account_mutex);
@@ -3215,7 +3154,9 @@ CATCH:
 	if (account_head)
 	{
 		_remove_sensitive_info_from_non_owning_account_list(pid, account_head->account_list);
-		return account_head->account_list;
+		GList* result = account_head->account_list;
+		_ACCOUNT_FREE(account_head);
+		return result;
 	}
 	return NULL;
 }
@@ -3309,16 +3250,28 @@ CATCH:
 	if (hstmt != NULL)
 	{
 		rc = _account_query_finalize(hstmt);
-		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {*error_code = rc;}, NULL, ("finalize error"));
+		if (rc != ACCOUNT_ERROR_NONE) {
+			*error_code = rc;
+			_ERR("finalize error");
+		}
 		hstmt = NULL;
 	}
 
 	pthread_mutex_unlock(&account_mutex);
+
+	if( (*error_code != ACCOUNT_ERROR_NONE) && account_head ) {
+		_account_glist_free(account_head->account_list);
+		_ACCOUNT_FREE(account_head);
+		account_head = NULL;
+	}
+
 	if ((*error_code == ACCOUNT_ERROR_NONE) && account_head != NULL)
 	{
 		_INFO("Returning account_list");
 		_remove_sensitive_info_from_non_owning_account_list(pid,account_head->account_list);
-		return account_head->account_list;
+		GList* result = account_head->account_list;
+		_ACCOUNT_FREE(account_head);
+		return result;
 	}
 	return NULL;
 }
@@ -3336,7 +3289,7 @@ int _account_delete(int pid, int account_id)
 
 	int count = -1;
 	/* Check requested ID to delete */
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE id=%d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE _id=%d", ACCOUNT_TABLE, account_id);
 
 	count = _account_get_record_count(query);
 
@@ -3422,7 +3375,7 @@ int _account_delete(int pid, int account_id)
 
 	ACCOUNT_MEMSET(query, 0, sizeof(query));
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "DELETE FROM %s WHERE id = %d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "DELETE FROM %s WHERE _id = %d", ACCOUNT_TABLE, account_id);
 
 	hstmt = _account_prepare_query(query);
 	ACCOUNT_CATCH_ERROR(hstmt != NULL, {}, ACCOUNT_ERROR_DB_FAILED,
@@ -3831,9 +3784,11 @@ int _account_delete_from_db_by_package_name(int pid, const char *package_name, g
 		_INFO("After iter->data");
 		if (account != NULL)
 		{
-			char* id = (char*) calloc(1, sizeof(account->id));
+			char id[256] = {0, };
 
-			sprintf(id, "%d", account->id);
+			ACCOUNT_MEMSET(id, 0, 256);
+
+			ACCOUNT_SNPRINTF(id, 256, "%d", account->id);
 
 			_INFO("Adding account id [%s]", id);
 			account_id_list = g_slist_append(account_id_list, g_strdup(id));
@@ -4018,79 +3973,6 @@ int _account_get_total_count_from_db(gboolean include_hidden, int *count)
 		ACCOUNT_ERROR("[ERROR] Number of account : %d, End", ncount);
 		return ACCOUNT_ERROR_DB_FAILED;
 	}
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_type_free_label_items(label_s *data)
-{
-	_ACCOUNT_FREE(data->app_id);
-	_ACCOUNT_FREE(data->label);
-	_ACCOUNT_FREE(data->locale);
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_type_free_feature_items(provider_feature_s *data)
-{
-	_ACCOUNT_FREE(data->app_id);
-	_ACCOUNT_FREE(data->key);
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_type_gslist_free(GSList* list)
-{
-	ACCOUNT_RETURN_VAL((list != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("GSlist is NULL"));
-
-	GSList* iter;
-
-	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
-		label_s *label_data = (label_s*)iter->data;
-		_account_type_free_label_items(label_data);
-		_ACCOUNT_FREE(label_data);
-	}
-
-	g_slist_free(list);
-	list = NULL;
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_type_item_free(account_type_s *data)
-{
-	_ACCOUNT_FREE(data->app_id);
-	_ACCOUNT_FREE(data->service_provider_id);
-	_ACCOUNT_FREE(data->icon_path);
-	_ACCOUNT_FREE(data->small_icon_path);
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_type_glist_free(GList* list)
-{
-	ACCOUNT_RETURN_VAL((list != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("Glist is NULL"));
-
-	GList* iter;
-
-	for (iter = list; iter != NULL; iter = g_list_next(iter)) {
-		account_type_s *account_type_record = (account_type_s*)iter->data;
-		_account_type_item_free(account_type_record);
-		_ACCOUNT_FREE(account_type_record);
-	}
-
-	g_list_free(list);
-	list = NULL;
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-static int _account_type_free_account_type_items(account_type_s *data)
-{
-	_account_type_item_free(data);
-
-	_account_type_gslist_free(data->label_list);
-	_account_type_glist_free(data->account_type_list);
 
 	return ACCOUNT_ERROR_NONE;
 }
@@ -5853,7 +5735,7 @@ static int _account_insert_custom(account_s *account, int account_id)
 		return ACCOUNT_ERROR_NONE;
 	}
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where id=%d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where _id=%d", ACCOUNT_TABLE, account_id);
 
 	rc = _account_get_record_count(query);
 
@@ -5929,7 +5811,7 @@ static int _account_update_custom(account_s *account, int account_id)
 		return ACCOUNT_ERROR_NONE;
 	}
 
-	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where id=%d", ACCOUNT_TABLE, account_id);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) from %s where _id=%d", ACCOUNT_TABLE, account_id);
 
 	rc = _account_get_record_count(query);
 

@@ -8,12 +8,12 @@ pkg_check_modules(pkgs REQUIRED
 		capi-base-common
 		pkgmgr-info
 		aul
-		dbus-1
 		gio-2.0
-		gio-unix-2.0
+		vconf
 		cynara-client
 		cynara-session
 		cynara-creds-gdbus
+		account-common
 		accounts-svc
 )
 
@@ -22,21 +22,17 @@ FOREACH(flag ${pkgs_CFLAGS})
 ENDFOREACH(flag)
 
 SET(SERVER_SRCS
-	account-server.c
-	account-server-db.c
+	src/account-server-private.c
+	src/account-server.c
+	src/account-server-db.c
 )
 
-ADD_CUSTOM_COMMAND(
-	WORKING_DIRECTORY
-	OUTPUT account-mgr-stub.c
-	COMMAND gdbus-codegen --interface-prefix org.tizen.
-	--generate-c-code account-mgr-stub ../account_mgr.xml
-	COMMENT "Generating Account SVC GDBus .c/.h")
+INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/server/include)
 
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${EXTRA_CFLAGS} -Wall -Werror")
 SET(CMAKE_LDFLAGS "-Wl,-zdefs")
 
-ADD_EXECUTABLE(${DAEMON} ${SERVER_SRCS} account-mgr-stub.c)
+ADD_EXECUTABLE(${DAEMON} ${SERVER_SRCS})
 
 TARGET_LINK_LIBRARIES(${DAEMON} ${pkgs_LDFLAGS})
 
