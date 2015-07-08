@@ -2,8 +2,8 @@
 Description=Accounts service
 
 [Service]
-#User=system
-#Group=system
+User=system
+Group=system
 Type=simple
 ExecStart=/usr/bin/account-svcd
 Restart=always

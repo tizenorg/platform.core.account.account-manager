@@ -1832,13 +1832,11 @@ int _account_insert_to_db(account_s* account, int pid, int *account_id)
 		return ret_transaction;
 	}
 
-	_INFO("");
 	*account_id = _account_get_next_sequence(ACCOUNT_TABLE);
 	data->id = *account_id;
 
 	char* appid = NULL;
 	appid = _account_get_current_appid(pid);
-	_INFO("");
 
 	if(!appid)
 	{
@@ -3746,28 +3744,23 @@ int _account_delete_from_db_by_package_name(int pid, const char *package_name, g
 		error_code = _account_check_appid_group_with_package_name(current_appid, package_name_temp);
 
 		_ACCOUNT_FREE(current_appid);
-		_ACCOUNT_FREE(package_name_temp);		
+		_ACCOUNT_FREE(package_name_temp);
 
 		if(error_code != ACCOUNT_ERROR_NONE){
 			ACCOUNT_ERROR("No permission to delete\n");
 			return ACCOUNT_ERROR_PERMISSION_DENIED;
-		}	
+		}
 	}
 
 	// It only needs list of ids, does not need to query sensitive info. So sending 0
 	GList* account_list_temp = _account_query_account_by_package_name(getpid(), package_name, &ret);
-	if (account_list_temp == NULL)
-	{
-		_ERR("_account_query_account_by_package_name returned NULL");
-		return ACCOUNT_ERROR_DB_FAILED;
-	}
-
 	if( _account_db_err_code() == SQLITE_PERM ){
 		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
 		return ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 
 	if(ret != ACCOUNT_ERROR_NONE){
+		_ERR("_account_query_account_by_package_name failed ret=[%d]", ret);
 		return ret;
 	}
 

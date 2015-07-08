@@ -655,28 +655,30 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 															 const gchar *package_name, gboolean permission)
 {
 	_INFO("account_manager_account_delete_from_db_by_package_name start");
+	int return_code = ACCOUNT_ERROR_NONE;
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
-	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
-	{
-		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
-		goto RETURN;
-	}
-	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
-	{
-		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
-		goto RETURN;
+	if( permission ) {
+		return_code = _check_priviliege_account_read(invocation);
+		if (return_code != ACCOUNT_ERROR_NONE)
+		{
+			_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
+			goto RETURN;
+		}
+		return_code = _check_priviliege_account_write(invocation);
+		if (return_code != ACCOUNT_ERROR_NONE)
+		{
+			_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
+			goto RETURN;
+		}
 	}
 
 	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
-
 		goto RETURN;
 	}
 
