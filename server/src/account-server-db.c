@@ -3730,6 +3730,18 @@ int _account_delete_from_db_by_package_name(int pid, const char *package_name, g
 	ACCOUNT_RETURN_VAL((package_name != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("package_name is null!"));
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
 
+	// It only needs list of ids, does not need to query sensitive info. So sending 0
+	GList* account_list_temp = _account_query_account_by_package_name(getpid(), package_name, &ret);
+	if( _account_db_err_code() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	if(ret != ACCOUNT_ERROR_NONE){
+		_ERR("_account_query_account_by_package_name failed ret=[%d]", ret);
+		return ret;
+	}
+
 	/* Check permission of requested appid */
 	if(permission){
 		char* current_appid = NULL;
@@ -3748,29 +3760,18 @@ int _account_delete_from_db_by_package_name(int pid, const char *package_name, g
 
 		if(error_code != ACCOUNT_ERROR_NONE){
 			ACCOUNT_ERROR("No permission to delete\n");
+			_account_glist_free(account_list_temp);
 			return ACCOUNT_ERROR_PERMISSION_DENIED;
 		}
 	}
 
-	// It only needs list of ids, does not need to query sensitive info. So sending 0
-	GList* account_list_temp = _account_query_account_by_package_name(getpid(), package_name, &ret);
-	if( _account_db_err_code() == SQLITE_PERM ){
-		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
-		return ACCOUNT_ERROR_PERMISSION_DENIED;
-	}
-
-	if(ret != ACCOUNT_ERROR_NONE){
-		_ERR("_account_query_account_by_package_name failed ret=[%d]", ret);
-		return ret;
-	}
-
-	account_list_temp = g_list_first(account_list_temp);
-	_INFO("account_list_temp length=[%d]",g_list_length(account_list_temp));
+	GList *account_list = g_list_first(account_list_temp);
+	_INFO("account_list_temp length=[%d]",g_list_length(account_list));
 
 	GList* iter = NULL;
-	for (iter = account_list_temp; iter != NULL; iter = g_list_next(iter))
+	for (iter = account_list; iter != NULL; iter = g_list_next(iter))
 	{
-		_INFO("iterating account_list_temp");
+		_INFO("iterating account_list");
 		account_s *account = NULL;
 		_INFO("Before iter->data");
 		account = (account_s*)iter->data;
@@ -3787,6 +3788,8 @@ int _account_delete_from_db_by_package_name(int pid, const char *package_name, g
 			account_id_list = g_slist_append(account_id_list, g_strdup(id));
 		}
 	}
+
+	_account_glist_free(account_list_temp);
 
 	/* transaction control required*/
 	ret_transaction = _account_begin_transaction();
