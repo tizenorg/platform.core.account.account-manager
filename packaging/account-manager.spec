@@ -55,16 +55,15 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
-mkdir -p %{buildroot}%{_unitdir}/default.target.wants
+mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
 install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/accounts-service.service
-ln -s ../accounts-service.service %{buildroot}%{_unitdir}/default.target.wants/accounts-service.service
-#ln -s ../accounts-service.service %{buildroot}%{_unitdir}/multi-user.target.wants/accounts-service.service
+#ln -s ../accounts-service.service %{buildroot}%{_unitdir}/default.target.wants/accounts-service.service
+ln -s ../accounts-service.service %{buildroot}%{_unitdir}/multi-user.target.wants/accounts-service.service
 
-rm -rf %{buildroot}/usr/lib/account-manager
+#rm -rf %{buildroot}/usr/lib/account-manager
 
-
-mkdir -p %{buildroot}%{_unitdir}/dbus-1/system-services
-install -m 0644 %SOURCE2 %{buildroot}%{_unitdir}/dbus-1/system-services/org.tizen.account.manager.service
+mkdir -p %{buildroot}/usr/share/dbus-1/system-services
+install -m 0644 %SOURCE2 %{buildroot}/usr/share/dbus-1/system-services/org.tizen.account.manager.service
 
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
 install -m 0644 %{SOURCE3} %{buildroot}%{_sysconfdir}/dbus-1/system.d/
@@ -98,26 +97,16 @@ chown system:system %{TZ_SYS_DB}/.account.db-journal
 chmod 600 %{TZ_SYS_DB}/.account.db
 chmod 600 %{TZ_SYS_DB}/.account.db-journal
 
-#set message key value to NULL
-#vconftool set -t string db/account/msg '' -g 6514
-#vconftool set -tf string db/account/msg '' -s libaccounts-svc -u 200 -g 5000
-
-#smack labeling
-#chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
-#chsmack -a 'System' %{TZ_SYS_DB}/.account.db
-
-
 %postun -p /sbin/ldconfig
-
 
 
 %files
 %manifest account-svcd.manifest
 %defattr(-,system,system,-)
 %config %{_sysconfdir}/dbus-1/system.d/org.tizen.account.manager.conf
-%attr(0755,root,root) %{_bindir}/account-svcd
-%attr(-,root,root) %{_unitdir}/accounts-service.service
-#%attr(-,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
-%attr(-,root,root) %{_unitdir}/default.target.wants/accounts-service.service
-%attr(-,root,root) %{_unitdir}/dbus-1/system-services/org.tizen.account.manager.service
+%{_bindir}/account-svcd
+%{_unitdir}/accounts-service.service
+%{_unitdir}/multi-user.target.wants/accounts-service.service
+#%attr(-,root,root) %{_unitdir}/default.target.wants/accounts-service.service
+/usr/share/dbus-1/system-services/org.tizen.account.manager.service
 
