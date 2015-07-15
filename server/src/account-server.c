@@ -239,7 +239,7 @@ int _check_priviliege_account_write(GDBusMethodInvocation *invocation)
 	return _check_privilege(invocation, _PRIVILEGE_ACCOUNT_WRITE);
 }
 
-gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar* account_db_path, GVariant* account_data, gpointer user_data)
+gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant* account_data, gpointer user_data)
 {
 	_INFO("account_manager_account_add start");
 	int db_id = -1;
@@ -265,7 +265,7 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 	return_code = _account_db_open(1, pid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_db_open() error, db_path = %s, ret = %d", (char*)account_db_path, return_code);
+		_ERR("_account_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -314,7 +314,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path)
+gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation)
 {
 	_INFO("account_manager_account_query_all start");
 
@@ -380,7 +380,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path)
+gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation)
 {
 	_INFO("account_manager_account_query_all start");
 
@@ -445,7 +445,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, gchar *account_db_path, GVariant *account_type_data, gpointer user_data)
+gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant *account_type_data, gpointer user_data)
 {
 	int db_id = -1;
 	account_type_s* account_type = NULL;
@@ -520,7 +520,6 @@ RETURN:
 
 gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 											 GDBusMethodInvocation *invocation,
-											 gchar *account_db_path,
 											 gint account_db_id)
 {
 	_INFO("account_manager_account_delete_from_db_by_id start");
@@ -585,7 +584,6 @@ RETURN:
 
 gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *object,
 															 GDBusMethodInvocation *invocation,
-															 gchar	*account_db_path,
 															 const gchar *user_name,
 															 const gchar *package_name)
 {
@@ -651,7 +649,6 @@ RETURN:
 
 gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *object,
 															 GDBusMethodInvocation *invocation,
-															 gchar	*account_db_path,
 															 const gchar *package_name, gboolean permission)
 {
 	_INFO("account_manager_account_delete_from_db_by_package_name start");
@@ -718,7 +715,6 @@ RETURN:
 
 gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															GVariant *account_data,
 															gint account_id)
 {
@@ -795,7 +791,6 @@ RETURN:
 
 gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager *object,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															GVariant *account_data,
 															const gchar *user_name,
 															const gchar *package_name)
@@ -874,7 +869,6 @@ RETURN:
 gboolean
 account_manager_handle_account_type_query_label_by_locale(AccountManager *object,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const gchar *app_id,
 															const gchar *locale)
 {
@@ -935,7 +929,7 @@ RETURN:
 gboolean
 account_manager_handle_account_type_query_by_provider_feature(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path, const gchar *key)
+															const gchar *key)
 {
 	_INFO("account_manager_handle_account_type_query_by_provider_feature start");
 	GVariant* account_type_list_variant = NULL;
@@ -1011,7 +1005,7 @@ RETURN:
 	return true;
 }
 
-gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gchar *account_db_path, gboolean include_hidden)
+gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gboolean include_hidden)
 {
 	_INFO("account_manager_account_get_total_count_from_db start");
 	guint pid = _get_client_pid(invocation);
@@ -1069,7 +1063,7 @@ RETURN:
 }
 
 gboolean account_manager_handle_account_query_account_by_account_id(AccountManager *object, GDBusMethodInvocation *invocation,
-		gchar *account_db_path, gint account_db_id)
+		gint account_db_id)
 {
 	_INFO("account_manager_handle_account_query_account_by_account_id start");
 	GVariant* account_variant = NULL;
@@ -1144,7 +1138,7 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path, const gchar *user_name)
+														  const gchar *user_name)
 {
 	_INFO("account_manager_handle_account_query_account_by_user_name start");
 
@@ -1218,7 +1212,7 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_package_name(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path, const gchar *package_name)
+														  const gchar *package_name)
 {
 	_INFO("account_manager_handle_account_query_account_by_package_name start");
 
@@ -1292,7 +1286,6 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path,
 														  const gchar *capability_type,
 														  gint capability_value)
 {
@@ -1370,7 +1363,6 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_capability_type(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path,
 														  const gchar *capability_type)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability_type start");
@@ -1447,7 +1439,6 @@ RETURN:
 gboolean
 account_manager_handle_account_query_capability_by_account_id(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  gchar *account_db_path,
 														  const int account_id)
 {
 	_INFO("account_manager_handle_account_query_capability_by_account_id start");
@@ -1523,7 +1514,6 @@ RETURN:
 
 gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager *object,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const int account_db_id,
 															const int sync_status)
 {
@@ -1589,7 +1579,6 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const gchar* app_id)
 {
 	GSList* feature_record_list = NULL;
@@ -1661,7 +1650,6 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_supported_feature(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const gchar* app_id,
 															const gchar* capability)
 {
@@ -1722,7 +1710,6 @@ RETURN:
 
 gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															GVariant *account_type_variant,
 															const gchar *app_id)
 {
@@ -1793,7 +1780,6 @@ RETURN:
 
 gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_delete_by_app_id start");
@@ -1858,7 +1844,6 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_app_id start");
@@ -1921,7 +1906,6 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_query_by_app_id start");
@@ -1991,7 +1975,7 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path, const gchar *app_id)
+															const gchar *app_id)
 {
 	_INFO("account_manager_handle_account_type_query_app_id_exist start");
 	guint pid = _get_client_pid(invocation);
@@ -2049,7 +2033,6 @@ RETURN:
 
 gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															gchar *account_db_path,
 															GVariant *account_data,
 															gint account_id)
 {
