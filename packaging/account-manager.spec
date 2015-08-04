@@ -1,14 +1,13 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.0.1
+Version:    0.0.4
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0
 Source0:    account-manager-%{version}.tar.gz
-Source1:    accounts-service.service
-Source2:    org.tizen.account.manager.service
-Source3:	org.tizen.account.manager.conf
+Source1:    org.tizen.account.manager.service
+Source2:    org.tizen.account.manager.conf
 
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(dlog)
@@ -34,7 +33,7 @@ Account Daemon: no
 
 %prep
 %setup -q
-cp %{SOURCE2} .
+cp %{SOURCE1} .
 
 %build
 #export   CFLAGS+=" -Wextra -Wcast-align -Wcast-qual -Wshadow -Wwrite-strings -Wswitch-default"
@@ -55,18 +54,13 @@ make %{?jobs:-j%jobs}
 rm -rf %{buildroot}
 %make_install
 
-mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
-install -m 0644 %SOURCE1 %{buildroot}%{_unitdir}/accounts-service.service
-#ln -s ../accounts-service.service %{buildroot}%{_unitdir}/default.target.wants/accounts-service.service
-ln -s ../accounts-service.service %{buildroot}%{_unitdir}/multi-user.target.wants/accounts-service.service
-
-#rm -rf %{buildroot}/usr/lib/account-manager
+rm -rf %{buildroot}/usr/lib/account-manager
 
 mkdir -p %{buildroot}/usr/share/dbus-1/system-services
-install -m 0644 %SOURCE2 %{buildroot}/usr/share/dbus-1/system-services/org.tizen.account.manager.service
+install -m 0644 %SOURCE1 %{buildroot}/usr/share/dbus-1/system-services/org.tizen.account.manager.service
 
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
-install -m 0644 %{SOURCE3} %{buildroot}%{_sysconfdir}/dbus-1/system.d/
+install -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 
 %post
 /sbin/ldconfig
@@ -97,6 +91,10 @@ chown system:system %{TZ_SYS_DB}/.account.db-journal
 chmod 600 %{TZ_SYS_DB}/.account.db
 chmod 600 %{TZ_SYS_DB}/.account.db-journal
 
+#smack labeling
+chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
+chsmack -a 'System' %{TZ_SYS_DB}/.account.db
+chsmack -a 'System' %{_bindir}/account-svcd
 %postun -p /sbin/ldconfig
 
 
@@ -105,8 +103,5 @@ chmod 600 %{TZ_SYS_DB}/.account.db-journal
 %defattr(-,system,system,-)
 %config %{_sysconfdir}/dbus-1/system.d/org.tizen.account.manager.conf
 %{_bindir}/account-svcd
-%{_unitdir}/accounts-service.service
-%{_unitdir}/multi-user.target.wants/accounts-service.service
-#%attr(-,root,root) %{_unitdir}/default.target.wants/accounts-service.service
-/usr/share/dbus-1/system-services/org.tizen.account.manager.service
+%attr(0644,system,system) /usr/share/dbus-1/system-services/org.tizen.account.manager.service
 
