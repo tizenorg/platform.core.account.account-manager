@@ -48,13 +48,16 @@ typedef sqlite3_stmt* account_stmt;
 
 #define RCS_APPID "com.samsung.rcs-im"
 #define IMS_SERVICE_APPID "ims-service"
-#define ACTIVESYNC_APPID "activesync-ui"
+#define ACTIVESYNC_APPID "eas-ui"
 #define EMAIL_APPID "email-setting-efl"
 #define SYNCHRONISE_APPID "setting-synchronise-efl"
 #define DS_AGENT_CMDLINE "/usr/bin/oma-ds-agent"
 
 #define FACEBOOK_SDK_APPID "com.samsung.facebook-service"
 #define FACEBOOK_APPID "com.samsung.facebook"
+
+#define EASYSIGNUP_CMDLINE	"/usr/bin/esu-agent"
+#define EASYSIGNUP_APPID	"com.samsung.esu-agent"
 
 #define ACCOUNT_DB_OPEN_READONLY 0
 #define ACCOUNT_DB_OPEN_READWRITE 1
@@ -201,6 +204,10 @@ static char* _account_get_current_appid(int pid)
 			appid_ret = _account_get_text(SYNCHRONISE_APPID);
 			_ACCOUNT_FREE(cmdline);
 			return appid_ret;
+		} else if (!g_strcmp0(cmdline, EASYSIGNUP_CMDLINE)) {
+			appid_ret = _account_get_text(EASYSIGNUP_APPID);
+			_ACCOUNT_FREE(cmdline);
+			return appid_ret;
 		} else {
 			ACCOUNT_DEBUG("No app id\n");
 			_ACCOUNT_FREE(cmdline);
@@ -258,6 +265,11 @@ static int _account_check_account_type_with_appid_group(const char* appid, char*
 		return ACCOUNT_ERROR_NONE;
 	}
 
+	if(!strcmp(appid, EASYSIGNUP_APPID)){
+		ACCOUNT_DEBUG("easysignup exception\n");
+		*verified_appid = _account_get_text(appid);
+		return ACCOUNT_ERROR_NONE;
+	}
 	/* Get app id family which is stored in account database */
 	int pkgmgr_ret = -1;
 	pkgmgr_ret = pkgmgrinfo_appinfo_get_appinfo(appid, &ahandle);
@@ -327,11 +339,16 @@ static int _account_check_appid_group_with_package_name(const char* appid, char*
 	}
 
 	/* ims-service Exception */
-	if ( strcmp(appid, "ims-service") == 0 &&	strcmp(package_name, "ims-service") == 0 ) {
+	if ( strcmp(appid, IMS_SERVICE_APPID) == 0 &&	strcmp(package_name, IMS_SERVICE_APPID) == 0 ) {
 		ACCOUNT_DEBUG("ims exception.");				// TODO: NEED TO REMOVE, debug log.
 		return ACCOUNT_ERROR_NONE;
 	}
 
+	/* easysignup Exception */
+	if ( strcmp(appid, EASYSIGNUP_APPID) == 0 &&	strcmp(package_name, EASYSIGNUP_APPID) == 0 ) {
+		ACCOUNT_DEBUG("easysignup exception.");				// TODO: NEED TO REMOVE, debug log.
+		return ACCOUNT_ERROR_NONE;
+	}
 	/* Get app id family which is stored in account database */
 	int pkgmgr_ret = -1;
 	pkgmgr_ret = pkgmgrinfo_appinfo_get_appinfo(appid, &ahandle);
@@ -361,7 +378,7 @@ static int _account_check_appid_group_with_package_name(const char* appid, char*
 				_ACCOUNT_FREE(tmp);
 				break;
 			} else if ( strcmp(tmp, "com.samsung.samsung-account-front") == 0 &&
-						strcmp(package_name, "gr47by21a5.SamsungAccount") == 0 ) {
+						strcmp(package_name, "com.samsung.samsungaccount") == 0 ) {
 				/* Samung Account Exception */
 				error_code = ACCOUNT_ERROR_NONE;
 				_ACCOUNT_FREE(tmp);
