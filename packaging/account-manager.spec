@@ -85,22 +85,22 @@ then
 '
 fi
 
-chown system:system %{TZ_SYS_DB}/.account.db
-chown system:system %{TZ_SYS_DB}/.account.db-journal
+#chown system:system %{TZ_SYS_DB}/.account.db
+#chown system:system %{TZ_SYS_DB}/.account.db-journal
 
-chmod 600 %{TZ_SYS_DB}/.account.db
-chmod 600 %{TZ_SYS_DB}/.account.db-journal
+#chmod 600 %{TZ_SYS_DB}/.account.db
+#chmod 600 %{TZ_SYS_DB}/.account.db-journal
 
 #smack labeling
-chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
-chsmack -a 'System' %{TZ_SYS_DB}/.account.db
+#chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
+#chsmack -a 'System' %{TZ_SYS_DB}/.account.db
 %postun -p /sbin/ldconfig
 
 
 %files
 %manifest account-svcd.manifest
-%defattr(-,system,system,-)
+#%defattr(-,system,system,-)
 %config %{_sysconfdir}/dbus-1/system.d/org.tizen.account.manager.conf
 %{_bindir}/account-svcd
-%attr(0644,system,system) /usr/share/dbus-1/system-services/org.tizen.account.manager.service
+%attr(0644,root,root) /usr/share/dbus-1/system-services/org.tizen.account.manager.service
 
