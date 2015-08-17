@@ -8,6 +8,7 @@ License:    Apache-2.0
 Source0:    account-manager-%{version}.tar.gz
 Source1:    org.tizen.account.manager.service
 Source2:    org.tizen.account.manager.conf
+Source3:    accounts-service.service
 
 BuildRequires:  cmake
 BuildRequires:  pkgconfig(dlog)
@@ -62,6 +63,10 @@ install -m 0644 %SOURCE1 %{buildroot}/usr/share/dbus-1/system-services/org.tizen
 mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
 install -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/dbus-1/system.d/
 
+mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
+install -m 644 %SOURCE3 %{buildroot}%{_unitdir}/accounts-service.service
+%install_service multi-user.target.wants accounts-service.service
+
 %post
 /sbin/ldconfig
 #if [ ! -d /opt/usr/dbspace ]
@@ -102,5 +107,7 @@ fi
 #%defattr(-,system,system,-)
 %config %{_sysconfdir}/dbus-1/system.d/org.tizen.account.manager.conf
 %{_bindir}/account-svcd
+%attr(0644,root,root) %{_unitdir}/accounts-service.service
+%attr(0644,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
 %attr(0644,root,root) /usr/share/dbus-1/system-services/org.tizen.account.manager.service
 
