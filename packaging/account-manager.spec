@@ -24,6 +24,7 @@ BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(cynara-creds-gdbus)
 BuildRequires:  pkgconfig(account-common)
 BuildRequires:  pkgconfig(accounts-svc)
+BuildRequires:  pkgconfig(libtzplatform-config)
 
 Requires(post): /sbin/ldconfig
 Requires(post): /usr/bin/sqlite3
