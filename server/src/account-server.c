@@ -239,7 +239,7 @@ int _check_priviliege_account_write(GDBusMethodInvocation *invocation)
 	return _check_privilege(invocation, _PRIVILEGE_ACCOUNT_WRITE);
 }
 
-gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant* account_data, gpointer user_data)
+gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant* account_data, gint uid, gpointer user_data)
 {
 	_INFO("account_manager_account_add start");
 	int db_id = -1;
@@ -279,7 +279,7 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 		goto RETURN;
 	}
 
-	return_code = _account_insert_to_db(account, pid, &db_id);
+	return_code = _account_insert_to_db(account, pid, (int)uid, &db_id);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
@@ -520,7 +520,8 @@ RETURN:
 
 gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 											 GDBusMethodInvocation *invocation,
-											 gint account_db_id)
+											 gint account_db_id,
+											 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_id start");
 
@@ -549,7 +550,7 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 	}
 
 	_INFO("before _account_delete");
-	return_code = _account_delete(pid, account_db_id);
+	return_code = _account_delete(pid, uid, account_db_id);
 	_INFO("after _account_delete=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
@@ -585,7 +586,8 @@ RETURN:
 gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *object,
 															 GDBusMethodInvocation *invocation,
 															 const gchar *user_name,
-															 const gchar *package_name)
+															 const gchar *package_name,
+															 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_user_name start");
 
@@ -614,7 +616,7 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 	}
 
 	_INFO("before _account_delete_from_db_by_user_name");
-	return_code = _account_delete_from_db_by_user_name(pid, user_name, package_name);
+	return_code = _account_delete_from_db_by_user_name(pid, uid, user_name, package_name);
 	_INFO("after _account_delete_from_db_by_user_name=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
@@ -649,7 +651,9 @@ RETURN:
 
 gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *object,
 															 GDBusMethodInvocation *invocation,
-															 const gchar *package_name, gboolean permission)
+															 const gchar *package_name,
+															 gboolean permission,
+															 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_package_name start");
 	int return_code = ACCOUNT_ERROR_NONE;
@@ -680,7 +684,7 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 	}
 
 	_INFO("before account_delete_from_db_by_package_name");
-	return_code = _account_delete_from_db_by_package_name(pid, package_name, permission);
+	return_code = _account_delete_from_db_by_package_name(pid, uid, package_name, permission);
 	_INFO("after account_delete_from_db_by_package_name=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
@@ -716,7 +720,8 @@ RETURN:
 gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 															GDBusMethodInvocation *invocation,
 															GVariant *account_data,
-															gint account_id)
+															gint account_id,
+															gint uid)
 {
 	_INFO("account_manager_account_update_to_db_by_id start");
 	account_s* account = NULL;
@@ -754,7 +759,7 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 	}
 
 	_INFO("before account_update_to_db_by_id");
-	return_code = _account_update_to_db_by_id(pid, account, account_id);
+	return_code = _account_update_to_db_by_id(pid, uid, account, account_id);
 	_INFO("after account_update_to_db_by_id=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
@@ -793,7 +798,8 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 															GDBusMethodInvocation *invocation,
 															GVariant *account_data,
 															const gchar *user_name,
-															const gchar *package_name)
+															const gchar *package_name,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_user_name start");
 	account_s* account = NULL;
@@ -831,7 +837,7 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 	}
 
 	_INFO("before account_update_to_db_by_id");
-	return_code = _account_update_to_db_by_user_name(pid, account, user_name, package_name);
+	return_code = _account_update_to_db_by_user_name(pid, uid, account, user_name, package_name);
 	_INFO("after account_update_to_db_by_id=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
@@ -1515,7 +1521,8 @@ RETURN:
 gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager *object,
 															GDBusMethodInvocation *invocation,
 															const int account_db_id,
-															const int sync_status)
+															const int sync_status,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_update_sync_status_by_id start");
 	guint pid = _get_client_pid(invocation);
@@ -1544,7 +1551,7 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 	}
 
 	_INFO("before _account_update_sync_status_by_id");
-	return_code = _account_update_sync_status_by_id(account_db_id, sync_status);
+	return_code = _account_update_sync_status_by_id(uid, account_db_id, sync_status);
 	_INFO("after _account_update_sync_status_by_id=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)

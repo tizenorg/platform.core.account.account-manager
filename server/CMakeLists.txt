@@ -15,6 +15,7 @@ pkg_check_modules(pkgs REQUIRED
 		cynara-creds-gdbus
 		account-common
 		accounts-svc
+		libtzplatform-config
 )
 
 FOREACH(flag ${pkgs_CFLAGS})

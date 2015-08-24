@@ -28,6 +28,7 @@
 #include <pkgmgr-info.h>
 #include <aul.h>
 #include <unistd.h>
+#include <tzplatform_config.h>
 
 #include <dbg.h>
 #include <account_ipc_marshal.h>
@@ -228,7 +229,7 @@ static char* _account_get_current_appid(int pid)
 	return appid_ret;
 }
 
-static int _account_check_account_type_with_appid_group(const char* appid, char** verified_appid)
+static int _account_check_account_type_with_appid_group(int uid, const char* appid, char** verified_appid)
 {
 	int error_code = ACCOUNT_ERROR_NOT_REGISTERED_PROVIDER;
 	pkgmgrinfo_appinfo_h ahandle=NULL;
@@ -272,19 +273,35 @@ static int _account_check_account_type_with_appid_group(const char* appid, char*
 	}
 	/* Get app id family which is stored in account database */
 	int pkgmgr_ret = -1;
-	pkgmgr_ret = pkgmgrinfo_appinfo_get_appinfo(appid, &ahandle);
+
+	if (uid == OWNER_ROOT || uid == GLOBAL_USER) {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_appinfo(appid, &ahandle);
+	} else {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, uid, &ahandle);
+	}
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_appinfo_get_appinfo(%d)", pkgmgr_ret);
 	}
+
 	pkgmgr_ret = pkgmgrinfo_appinfo_get_pkgid(ahandle, &package_id);
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_appinfo_get_pkgid(%d)", pkgmgr_ret);
 	}
-	pkgmgr_ret = pkgmgrinfo_pkginfo_get_pkginfo(package_id, &phandle);
+
+	if (uid == OWNER_ROOT || uid == GLOBAL_USER) {
+		pkgmgr_ret = pkgmgrinfo_pkginfo_get_pkginfo(package_id, &phandle);
+	} else {
+		pkgmgr_ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(package_id, uid, &phandle);
+	}
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_pkginfo_get_pkginfo(%d)", pkgmgr_ret);
 	}
-	pkgmgr_ret = pkgmgrinfo_appinfo_get_list(phandle, PMINFO_ALL_APP, _account_get_current_appid_cb, (void *)&appid_list);
+
+	if (uid == OWNER_ROOT || uid == GLOBAL_USER) {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_list(phandle, PMINFO_ALL_APP, _account_get_current_appid_cb, (void *)&appid_list);
+	} else {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_usr_list(phandle, PMINFO_ALL_APP, _account_get_current_appid_cb, (void *)&appid_list, uid);
+	}
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_appinfo_get_list(%d)", pkgmgr_ret);
 	}
@@ -319,7 +336,7 @@ static int _account_check_account_type_with_appid_group(const char* appid, char*
 	return error_code;
 }
 
-static int _account_check_appid_group_with_package_name(const char* appid, char* package_name)
+static int _account_check_appid_group_with_package_name(int uid, const char* appid, char* package_name)
 {
 	int error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
 	pkgmgrinfo_appinfo_h ahandle=NULL;
@@ -351,19 +368,34 @@ static int _account_check_appid_group_with_package_name(const char* appid, char*
 	}
 	/* Get app id family which is stored in account database */
 	int pkgmgr_ret = -1;
-	pkgmgr_ret = pkgmgrinfo_appinfo_get_appinfo(appid, &ahandle);
+	if (uid == OWNER_ROOT || uid == GLOBAL_USER) {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_appinfo(appid, &ahandle);
+	} else {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_usr_appinfo(appid, uid, &ahandle);
+	}
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_appinfo_get_appinfo(%d)", pkgmgr_ret);
 	}
+
 	pkgmgr_ret = pkgmgrinfo_appinfo_get_pkgid(ahandle, &package_id);
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_appinfo_get_pkgid(%d)", pkgmgr_ret);
 	}
-	pkgmgr_ret = pkgmgrinfo_pkginfo_get_pkginfo(package_id, &phandle);
+
+	if (uid == OWNER_ROOT || uid == GLOBAL_USER) {
+		pkgmgr_ret = pkgmgrinfo_pkginfo_get_pkginfo(package_id, &phandle);
+	} else {
+		pkgmgr_ret = pkgmgrinfo_pkginfo_get_usr_pkginfo(package_id, uid, &phandle);
+	}
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_pkginfo_get_pkginfo(%d)", pkgmgr_ret);
 	}
-	pkgmgr_ret = pkgmgrinfo_appinfo_get_list(phandle, PMINFO_ALL_APP, _account_get_current_appid_cb, (void *)&appid_list);
+
+	if (uid == OWNER_ROOT || uid == GLOBAL_USER) {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_list(phandle, PMINFO_ALL_APP, _account_get_current_appid_cb, (void *)&appid_list);
+	} else {
+		pkgmgr_ret = pkgmgrinfo_appinfo_get_usr_list(phandle, PMINFO_ALL_APP, _account_get_current_appid_cb, (void *)&appid_list, uid);
+	}
 	if( pkgmgr_ret != PMINFO_R_OK ){
 		ACCOUNT_DEBUG("pkgmgrinfo_appinfo_get_list(%d)", pkgmgr_ret);
 	}
@@ -1716,7 +1748,7 @@ CATCH:
 
 
 
-static int _account_update_account_by_user_name(int pid, account_s *account, const char *user_name, const char *package_name)
+static int _account_update_account_by_user_name(int pid, int uid, account_s *account, const char *user_name, const char *package_name)
 {
 	int				rc = 0, binding_count = 0, count = 0;
 	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
@@ -1730,7 +1762,7 @@ static int _account_update_account_by_user_name(int pid, account_s *account, con
 	char* verified_appid = NULL;
 
 	current_appid = _account_get_current_appid(pid);
-	error_code = _account_check_account_type_with_appid_group(current_appid, &verified_appid);
+	error_code = _account_check_account_type_with_appid_group(uid, current_appid, &verified_appid);
 
 	_ACCOUNT_FREE(current_appid);
 	_ACCOUNT_FREE(verified_appid);
@@ -1810,7 +1842,7 @@ static int _account_update_account_by_user_name(int pid, account_s *account, con
 	return error_code;
 }
 
-int _account_insert_to_db(account_s* account, int pid, int *account_id)
+int _account_insert_to_db(account_s* account, int pid, int uid, int *account_id)
 {
 	_INFO("");
 	int		error_code = ACCOUNT_ERROR_NONE;
@@ -1867,7 +1899,7 @@ int _account_insert_to_db(account_s* account, int pid, int *account_id)
 
 	_INFO("");
 	char* verified_appid = NULL;
-	error_code  = _account_check_account_type_with_appid_group(appid, &verified_appid);//FIX
+	error_code  = _account_check_account_type_with_appid_group(uid, appid, &verified_appid);//FIX
 	_ACCOUNT_FREE(appid);
 	if(error_code != ACCOUNT_ERROR_NONE)
 	{
@@ -2285,7 +2317,7 @@ static int _account_get_package_name_from_account_id(int account_id, char **pack
 
 }
 
-static int _account_update_account(int pid, account_s *account, int account_id)
+static int _account_update_account(int pid, int uid, account_s *account, int account_id)
 {
 	int				rc = 0, binding_count =0;
 	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
@@ -2311,7 +2343,7 @@ static int _account_update_account(int pid, account_s *account, int account_id)
 		return ACCOUNT_ERROR_RECORD_NOT_FOUND;
 	}
 
-	error_code = _account_check_appid_group_with_package_name(current_appid, package_name);
+	error_code = _account_check_appid_group_with_package_name(uid, current_appid, package_name);
 	ACCOUNT_DEBUG( "UPDATE:account_id[%d],current_appid[%s]package_name[%s]", account_id, current_appid, package_name); 	// TODO: remove the log later.
 
 	_ACCOUNT_FREE(current_appid);
@@ -2510,7 +2542,7 @@ static int _account_update_account_ex(account_s *account, int account_id)
 }
 
 
-int _account_update_to_db_by_id(int pid, account_s* account, int account_id)
+int _account_update_to_db_by_id(int pid, int uid, account_s* account, int account_id)
 {
 	ACCOUNT_RETURN_VAL((account != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("DATA IS NULL"));
 	ACCOUNT_RETURN_VAL((account_id > 0), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("Account id is not valid"));
@@ -2520,7 +2552,7 @@ int _account_update_to_db_by_id(int pid, account_s* account, int account_id)
 
 	pthread_mutex_lock(&account_mutex);
 
-	error_code = _account_update_account(pid, data, account_id);
+	error_code = _account_update_account(pid, uid, data, account_id);
 
 	if(error_code != ACCOUNT_ERROR_NONE) {
 		pthread_mutex_unlock(&account_mutex);
@@ -2565,7 +2597,7 @@ int _account_update_to_db_by_id_ex(account_s* account, int account_id)
 }
 
 
-int _account_update_to_db_by_user_name(int pid, account_s* account, const char *user_name, const char *package_name)
+int _account_update_to_db_by_user_name(int pid, int uid, account_s* account, const char *user_name, const char *package_name)
 {
 	ACCOUNT_RETURN_VAL((user_name != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("USER NAME IS NULL"));
 	ACCOUNT_RETURN_VAL((package_name != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("PACKAGE NAME IS NULL"));
@@ -2576,7 +2608,7 @@ int _account_update_to_db_by_user_name(int pid, account_s* account, const char *
 
 	pthread_mutex_lock(&account_mutex);
 
-	error_code = _account_update_account_by_user_name(pid, data, user_name, package_name);
+	error_code = _account_update_account_by_user_name(pid, uid, data, user_name, package_name);
 
 	pthread_mutex_unlock(&account_mutex);
 
@@ -2657,7 +2689,7 @@ CATCH:
 	return account_list;
 }
 
-int _account_update_sync_status_by_id(int account_db_id, const int sync_status)
+int _account_update_sync_status_by_id(int uid, int account_db_id, const int sync_status)
 {
 	int				error_code = ACCOUNT_ERROR_NONE;
 	account_stmt 	hstmt = NULL;
@@ -3291,7 +3323,7 @@ CATCH:
 	return NULL;
 }
 
-int _account_delete(int pid, int account_id)
+int _account_delete(int pid, int uid, int account_id)
 {
 	int				error_code = ACCOUNT_ERROR_NONE;
 	account_stmt 	hstmt = NULL;
@@ -3335,7 +3367,7 @@ int _account_delete(int pid, int account_id)
 	}
 	ACCOUNT_DEBUG( "DELETE:account_id[%d],current_appid[%s]package_name[%s]", account_id, current_appid, package_name);
 
-	error_code = _account_check_appid_group_with_package_name(current_appid, package_name);
+	error_code = _account_check_appid_group_with_package_name(uid, current_appid, package_name);
 
 	_ACCOUNT_FREE(current_appid);
 	_ACCOUNT_FREE(package_name);
@@ -3560,7 +3592,7 @@ int _account_get_account_id(account_s* account, int *account_id)
 	return ACCOUNT_ERROR_NONE;
 }
 
-int _account_delete_from_db_by_user_name(int pid, const char *user_name, const char *package_name)
+int _account_delete_from_db_by_user_name(int pid, int uid, const char *user_name, const char *package_name)
 {
 	_INFO("[%s][%s]", user_name, package_name);
 
@@ -3588,7 +3620,7 @@ int _account_delete_from_db_by_user_name(int pid, const char *user_name, const c
 
 	ACCOUNT_DEBUG( "DELETE:user_name[%s],current_appid[%s], package_name[%s]", user_name, current_appid, package_name_temp);
 
-	error_code = _account_check_appid_group_with_package_name(current_appid, package_name_temp);
+	error_code = _account_check_appid_group_with_package_name(uid, current_appid, package_name_temp);
 
 	_ACCOUNT_FREE(current_appid);
 	_ACCOUNT_FREE(package_name_temp);
@@ -3731,7 +3763,7 @@ CATCH:
 	return error_code;
 }
 
-int _account_delete_from_db_by_package_name(int pid, const char *package_name, gboolean permission)
+int _account_delete_from_db_by_package_name(int pid, int uid, const char *package_name, gboolean permission)
 {
 	_INFO("_account_delete_from_db_by_package_name");
 	int 			error_code = ACCOUNT_ERROR_NONE;
@@ -3770,7 +3802,7 @@ int _account_delete_from_db_by_package_name(int pid, const char *package_name, g
 
 		ACCOUNT_DEBUG( "DELETE: current_appid[%s], package_name[%s]", current_appid, package_name_temp);
 
-		error_code = _account_check_appid_group_with_package_name(current_appid, package_name_temp);
+		error_code = _account_check_appid_group_with_package_name(uid, current_appid, package_name_temp);
 
 		_ACCOUNT_FREE(current_appid);
 		_ACCOUNT_FREE(package_name_temp);
