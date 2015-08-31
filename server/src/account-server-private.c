@@ -21,7 +21,7 @@
 #include <account-private.h>
 #include "account-server-private.h"
 
-int _account_glist_free(GList* list)
+int _account_glist_account_free(GList* list)
 {
 	if(!list){
 		return ACCOUNT_ERROR_INVALID_PARAMETER;
@@ -41,7 +41,27 @@ int _account_glist_free(GList* list)
 	return ACCOUNT_ERROR_NONE;
 }
 
-int _account_gslist_free(GSList* list)
+int _account_gslist_account_free(GSList *list)
+{
+	if(!list){
+		return ACCOUNT_ERROR_INVALID_PARAMETER;
+	}
+
+	GSList* iter;
+
+	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
+		account_s *account_data = (account_s*)iter->data;
+		_account_free_account_items(account_data);
+		_ACCOUNT_FREE(account_data);
+	}
+
+	g_slist_free(list);
+	list = NULL;
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+int _account_gslist_capability_free(GSList* list)
 {
 	if(!list){
 		return ACCOUNT_ERROR_INVALID_PARAMETER;
@@ -61,7 +81,7 @@ int _account_gslist_free(GSList* list)
 	return ACCOUNT_ERROR_NONE;
 }
 
-int _account_custom_gslist_free(GSList* list)
+int _account_gslist_custom_free(GSList* list)
 {
 	if(!list){
 		return ACCOUNT_ERROR_INVALID_PARAMETER;
@@ -123,9 +143,9 @@ int _account_free_account_items(account_s *data)
 	for(i=0;i<USER_TXT_CNT;i++)
 		_ACCOUNT_FREE(data->user_data_txt[i]);
 
-	_account_gslist_free(data->capablity_list);
-	_account_glist_free(data->account_list);
-	_account_custom_gslist_free(data->custom_list);
+	_account_gslist_capability_free(data->capablity_list);
+	_account_glist_account_free(data->account_list);
+	_account_gslist_custom_free(data->custom_list);
 
 	return ACCOUNT_ERROR_NONE;
 }
@@ -153,7 +173,25 @@ int _account_type_free_feature_items(provider_feature_s *data)
 	return ACCOUNT_ERROR_NONE;
 }
 
-int _account_type_gslist_free(GSList* list)
+int _account_type_gslist_feature_free(GSList* list)
+{
+	ACCOUNT_RETURN_VAL((list != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("GSlist is NULL"));
+
+	GSList* iter;
+
+	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
+		provider_feature_s *feature_data = (provider_feature_s*)iter->data;
+		_account_type_free_feature_items(feature_data);
+		_ACCOUNT_FREE(feature_data);
+	}
+
+	g_slist_free(list);
+	list = NULL;
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+int _account_type_gslist_label_free(GSList* list)
 {
 	ACCOUNT_RETURN_VAL((list != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("GSlist is NULL"));
 
@@ -209,9 +247,27 @@ int _account_type_free_account_type_items(account_type_s *data)
 
 	_account_type_item_free(data);
 
-	_account_type_gslist_free(data->label_list);
+	_account_type_gslist_label_free(data->label_list);
+	_account_type_gslist_feature_free(data->provider_feature_list);
 //	_account_type_glist_free(data->account_type_list);
 
 	return ACCOUNT_ERROR_NONE;
 }
 
+int _account_type_gslist_account_type_free(GSList* list)
+{
+	ACCOUNT_RETURN_VAL((list != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("GSlist is NULL"));
+
+	GSList* iter;
+
+	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
+		account_type_s *account_type_data = (account_type_s*)iter->data;
+		_account_type_free_account_type_items(account_type_data);
+		_ACCOUNT_FREE(account_type_data);
+	}
+
+	g_slist_free(list);
+	list = NULL;
+
+	return ACCOUNT_ERROR_NONE;
+}

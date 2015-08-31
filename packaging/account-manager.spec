@@ -1,7 +1,7 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.0.4
+Version:    0.1.0
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0
@@ -58,18 +58,19 @@ rm -rf %{buildroot}
 
 rm -rf %{buildroot}/usr/lib/account-manager
 
-mkdir -p %{buildroot}/usr/share/dbus-1/system-services
-install -m 0644 %SOURCE1 %{buildroot}/usr/share/dbus-1/system-services/org.tizen.account.manager.service
+mkdir -p %{buildroot}/usr/share/dbus-1/services
+install -m 0644 %SOURCE1 %{buildroot}/usr/share/dbus-1/services/org.tizen.account.manager.service
 
-mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/system.d
-install -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/dbus-1/system.d/
+mkdir -p %{buildroot}%{_sysconfdir}/dbus-1/session.d
+install -m 0644 %{SOURCE2} %{buildroot}%{_sysconfdir}/dbus-1/session.d/
 
-mkdir -p %{buildroot}%{_unitdir}/multi-user.target.wants
-install -m 644 %SOURCE3 %{buildroot}%{_unitdir}/accounts-service.service
-%install_service multi-user.target.wants accounts-service.service
+mkdir -p %{buildroot}%{_unitdir_user}/default.target.wants
+install -m 0644 %SOURCE3 %{buildroot}%{_unitdir_user}/accounts-service.service
+ln -s ../accounts-service.service %{buildroot}%{_unitdir_user}/default.target.wants/accounts-service.service
 
 %post
 /sbin/ldconfig
+
 #if [ ! -d /opt/usr/dbspace ]
 #then
 #        mkdir -p /opt/usr/dbspace
@@ -106,9 +107,8 @@ fi
 %files
 %manifest account-svcd.manifest
 #%defattr(-,system,system,-)
-%config %{_sysconfdir}/dbus-1/system.d/org.tizen.account.manager.conf
+%config %{_sysconfdir}/dbus-1/session.d/org.tizen.account.manager.conf
 %{_bindir}/account-svcd
-%attr(0644,root,root) %{_unitdir}/accounts-service.service
-%attr(0644,root,root) %{_unitdir}/multi-user.target.wants/accounts-service.service
-%attr(0644,root,root) /usr/share/dbus-1/system-services/org.tizen.account.manager.service
-
+%attr(0644,root,root) /usr/share/dbus-1/services/org.tizen.account.manager.service
+%{_unitdir_user}/accounts-service.service
+%{_unitdir_user}/default.target.wants/accounts-service.service
