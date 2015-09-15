@@ -32,10 +32,10 @@
 
 #include <dbg.h>
 #include <account_ipc_marshal.h>
+#include <account_free.h>
 #include <account-private.h>
 #include <account.h>
 #include <account-error.h>
-#include "account-server-private.h"
 #include "account-server-db.h"
 
 typedef sqlite3_stmt* account_stmt;
@@ -1733,8 +1733,7 @@ static int _account_compare_old_record_by_user_name(account_s *new_account, cons
 
 CATCH:
 	if (old_account) {
-		_account_free_account_items(old_account);
-		_ACCOUNT_FREE(old_account);
+		_account_free_account_with_items(old_account);
 	}
 
 	if (hstmt != NULL) {
@@ -2036,8 +2035,7 @@ int _account_query_capability_by_account_id(capability_cb callback, int account_
 
 		cb_ret = callback(capability_record->type, capability_record->value, user_data);
 
-		_account_free_capability_items(capability_record);
-		_ACCOUNT_FREE(capability_record);
+		_account_free_capability_with_items(capability_record);
 
 		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
 
@@ -2142,6 +2140,10 @@ static int _account_compare_old_record(account_s *new_account, int account_id)
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
 
 	old_account = (account_s*)calloc(1, sizeof(account_s));
+	if (old_account == NULL) {
+		_ERR("Out of Memory");
+		return ACCOUNT_ERROR_OUT_OF_MEMORY;
+	}
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
@@ -2253,10 +2255,8 @@ static int _account_compare_old_record(account_s *new_account, int account_id)
 	// user custom table
 
 CATCH:
-		if (old_account) {
-			_account_free_account_items(old_account);
-			_ACCOUNT_FREE(old_account);
-		}
+		if (old_account)
+			_account_free_account_with_items(old_account);
 
 		if (hstmt != NULL) {
 			rc = _account_query_finalize(hstmt);
@@ -2279,6 +2279,10 @@ static int _account_get_package_name_from_account_id(int account_id, char **pack
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
 
 	old_account = (account_s*)calloc(1, sizeof(account_s));
+	if (old_account == NULL) {
+		_ERR("Out Of memory");
+		return ACCOUNT_ERROR_OUT_OF_MEMORY;
+	}
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
@@ -2303,8 +2307,7 @@ static int _account_get_package_name_from_account_id(int account_id, char **pack
 
 	CATCH:
 		if (old_account) {
-			_account_free_account_items(old_account);
-			_ACCOUNT_FREE(old_account);
+			_account_free_account_with_items(old_account);
 		}
 
 		if (hstmt != NULL) {
@@ -2354,7 +2357,11 @@ static int _account_update_account(int pid, int uid, account_s *account, int acc
 		return ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 
-	_account_compare_old_record(account, account_id);
+	error_code = _account_compare_old_record(account, account_id);
+	if (error_code != ACCOUNT_ERROR_NONE) {
+		ACCOUNT_ERROR("_account_compare_old_record fail\n");
+		return error_code;
+	}
 
 	if( _account_db_err_code() == SQLITE_PERM ){
 		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
@@ -2452,7 +2459,11 @@ static int _account_update_account_ex(account_s *account, int account_id)
 		return ACCOUNT_ERROR_INVALID_PARAMETER;
 	}
 
-	_account_compare_old_record(account, account_id);
+	error_code = _account_compare_old_record(account, account_id);
+	if (error_code != ACCOUNT_ERROR_NONE) {
+		ACCOUNT_ERROR("_account_compare_old_record fail\n");
+		return error_code;
+	}
 
 	if( _account_db_err_code() == SQLITE_PERM ){
 		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
@@ -2679,7 +2690,7 @@ GSList* _account_db_query_all(int pid)
 CATCH:
 	if (hstmt != NULL) {
 		rc = _account_query_finalize(hstmt);
-		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {_account_gslist_free(account_list);}, NULL, ("finalize error"));
+		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {_account_gslist_account_free(account_list);}, NULL, ("finalize error"));
 		hstmt = NULL;
 	}
 	if (account_list)
@@ -3077,7 +3088,7 @@ CATCH:
 	}
 
 	if( *error_code != ACCOUNT_ERROR_NONE && account_head ) {
-		_account_glist_free(account_head->account_list);
+		_account_glist_account_free(account_head->account_list);
 		_ACCOUNT_FREE(account_head);
 		account_head = NULL;
 	}
@@ -3191,7 +3202,7 @@ CATCH:
 	}
 
 	if( (*error_code != ACCOUNT_ERROR_NONE) && account_head ) {
-		_account_glist_free(account_head->account_list);
+		_account_glist_account_free(account_head->account_list);
 		_ACCOUNT_FREE(account_head);
 		account_head = NULL;
 	}
@@ -3307,7 +3318,7 @@ CATCH:
 	pthread_mutex_unlock(&account_mutex);
 
 	if( (*error_code != ACCOUNT_ERROR_NONE) && account_head ) {
-		_account_glist_free(account_head->account_list);
+		_account_glist_account_free(account_head->account_list);
 		_ACCOUNT_FREE(account_head);
 		account_head = NULL;
 	}
@@ -3572,8 +3583,7 @@ int _account_destroy(account_h account)
 
 	ACCOUNT_RETURN_VAL((data != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("Account handle is null!"));
 
-	_account_free_account_items(data);
-	_ACCOUNT_FREE(data);
+	_account_free_account_with_items(data);
 
 	return ACCOUNT_ERROR_NONE;
 }
@@ -3809,7 +3819,7 @@ int _account_delete_from_db_by_package_name(int pid, int uid, const char *packag
 
 		if(error_code != ACCOUNT_ERROR_NONE){
 			ACCOUNT_ERROR("No permission to delete\n");
-			_account_glist_free(account_list_temp);
+			_account_glist_account_free(account_list_temp);
 			return ACCOUNT_ERROR_PERMISSION_DENIED;
 		}
 	}
@@ -3838,7 +3848,7 @@ int _account_delete_from_db_by_package_name(int pid, int uid, const char *packag
 		}
 	}
 
-	_account_glist_free(account_list_temp);
+	_account_glist_account_free(account_list_temp);
 
 	/* transaction control required*/
 	ret_transaction = _account_begin_transaction();
@@ -4049,8 +4059,7 @@ int account_type_destroy(account_type_h account_type)
 
 	ACCOUNT_RETURN_VAL((data != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("Account type handle is null!"));
 
-	_account_type_free_account_type_items(data);
-	_ACCOUNT_FREE(data);
+	_account_type_free_account_type_with_items(data);
 
 	return ACCOUNT_ERROR_NONE;
 }
@@ -4597,8 +4606,7 @@ int account_type_query_provider_feature_by_app_id(provider_feature_cb callback, 
 
 		cb_ret = callback(feature_record->app_id, feature_record->key, user_data);
 
-		_account_type_free_feature_items(feature_record);
-		_ACCOUNT_FREE(feature_record);
+		_account_type_free_feature_with_items(feature_record);
 
 		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
 
@@ -5346,8 +5354,7 @@ int account_type_query_label_by_app_id(account_label_cb callback, const char* ap
 
 		cb_ret = callback(label_record->app_id, label_record->label , label_record->locale, user_data);
 
-		_account_type_free_label_items(label_record);
-		_ACCOUNT_FREE(label_record);
+		_account_type_free_label_with_items(label_record);
 
 		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
 
@@ -5441,6 +5448,7 @@ int _account_type_query_by_app_id(const char* app_id, account_type_s** account_t
 	int 			rc = 0, binding_count = 1;
 
 	ACCOUNT_RETURN_VAL((app_id != 0), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((account_type_record != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("account type record(account_type_s**) is NULL"));
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
@@ -5459,6 +5467,11 @@ int _account_type_query_by_app_id(const char* app_id, account_type_s** account_t
 	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
 
 	*account_type_record = create_empty_account_type_instance();
+	if (*account_type_record == NULL) {
+		_ERR("Out of Memory");
+		error_code = ACCOUNT_ERROR_OUT_OF_MEMORY;
+		goto CATCH;
+	}
 
 	while (rc == SQLITE_ROW) {
 		_account_type_convert_column_to_account_type(hstmt, *account_type_record);
@@ -5576,7 +5589,7 @@ GSList* _account_type_query_by_provider_feature(const char* key, int *error_code
 	rc = _account_query_finalize(hstmt);
 	if (rc != ACCOUNT_ERROR_NONE )
 	{
-		_account_type_gslist_free(account_type_list);
+		_account_type_gslist_account_type_free(account_type_list);
 		ACCOUNT_ERROR("finalize error(%s)", rc);
 		*error_code = rc;
 		goto CATCH;
@@ -5669,7 +5682,7 @@ CATCH:
 	if (hstmt != NULL)
 	{
 		rc = _account_query_finalize(hstmt);
-		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {_account_type_gslist_free(account_type_list);}, NULL, ("finalize error"));
+		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {_account_type_gslist_account_type_free(account_type_list);}, NULL, ("finalize error"));
 		hstmt = NULL;
 	}
 
@@ -5741,8 +5754,7 @@ int _account_type_query_label_by_locale(const char* app_id, const char* locale, 
 		//Making label newly created
 		*label = _account_get_text(label_record->label);
 
-		_account_type_free_label_items(label_record);
-		_ACCOUNT_FREE(label_record);
+		_account_type_free_label_with_items(label_record);
 
 		rc = _account_query_step(hstmt);
 	}
@@ -5983,8 +5995,7 @@ static int _account_query_custom_by_account_id(account_custom_cb callback, int a
 
 		cb_ret = callback(custom_record->key, custom_record->value, user_data);
 
-		_account_custom_item_free(custom_record);
-		_ACCOUNT_FREE(custom_record);
+		_account_free_custom_with_items(custom_record);
 
 		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
 

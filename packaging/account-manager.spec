@@ -1,7 +1,7 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.0.4
+Version:    0.0.8
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0

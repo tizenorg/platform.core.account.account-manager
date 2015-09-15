@@ -30,11 +30,11 @@
 
 #include <dbg.h>
 #include <account_ipc_marshal.h>
+#include <account_free.h>
 #include <account-mgr-stub.h>
 #include <account-private.h>
 #include <account-error.h>
 
-#include "account-server-private.h"
 #include "account-server-db.h"
 #define _PRIVILEGE_ACCOUNT_READ "http://tizen.org/privilege/account.read"
 #define _PRIVILEGE_ACCOUNT_WRITE "http://tizen.org/privilege/account.write"
@@ -309,7 +309,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_free_account_items(account);
+	_account_free_account_with_items(account);
 
 	return true;
 }
@@ -514,7 +514,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_type_free_account_type_items(account_type);
+	_account_type_free_account_type_with_items(account_type);
 	return true;
 }
 
@@ -789,7 +789,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_free_account_items(account);
+	_account_free_account_with_items(account);
 
 	return true;
 }
@@ -867,7 +867,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_free_account_items(account);
+	_account_free_account_with_items(account);
 
 	return true;
 }
@@ -1136,7 +1136,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_free_account_items(account_data);
+	_account_free_account_with_items(account_data);
 
 	return true;
 }
@@ -1780,7 +1780,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_type_free_account_type_items(account_type);
+	_account_type_free_account_type_with_items(account_type);
 
 	return true;
 }
@@ -1977,6 +1977,8 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	_account_type_free_account_type_with_items(account_type);
+
 	return true;
 }
 
@@ -2023,7 +2025,7 @@ RETURN:
 	}
 	else
 	{
-		_INFO("Calling account_manager_complete_account_type_query_by_app_id");
+		_INFO("Calling account_manager_complete_account_type_query_by_app_id_exist");
 		account_manager_complete_account_type_query_app_id_exist (obj, invocation);
 	}
 	_INFO("account_manager_handle_account_type_query_app_id_exist end");
@@ -2109,7 +2111,7 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
-	_account_free_account_items(account);
+	_account_free_account_with_items(account);
 
 	return true;
 }

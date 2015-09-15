@@ -23,7 +23,6 @@ FOREACH(flag ${pkgs_CFLAGS})
 ENDFOREACH(flag)
 
 SET(SERVER_SRCS
-	src/account-server-private.c
 	src/account-server.c
 	src/account-server-db.c
 )
