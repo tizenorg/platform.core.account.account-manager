@@ -20,6 +20,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <pthread.h>
 #include <glib.h>
 #include <db-util.h>
 #include <pthread.h>
@@ -27,7 +30,6 @@
 
 #include <pkgmgr-info.h>
 #include <aul.h>
-#include <unistd.h>
 #include <tzplatform_config.h>
 
 #include <dbg.h>
@@ -67,14 +69,17 @@ typedef sqlite3_stmt* account_stmt;
 
 #define _TIZEN_PUBLIC_
 #ifndef _TIZEN_PUBLIC_
-//#include <csc-feature.h>
 
 #endif
 
 static sqlite3* g_hAccountDB = NULL;
 static sqlite3* g_hAccountDB2 = NULL;
+static sqlite3* g_hAccountGlobalDB = NULL;
+static sqlite3* g_hAccountGlobalDB2 = NULL;
 pthread_mutex_t account_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t account_global_mutex = PTHREAD_MUTEX_INITIALIZER;
 
+int _account_db_handle_close(sqlite3* hDB);
 static char *_account_get_text(const char *text_data);
 static const char *_account_query_table_column_text(account_stmt pStmt, int pos);
 static int _account_insert_custom(account_s *account, int account_id);
@@ -192,9 +197,9 @@ static char* _account_get_current_appid(int pid)
 			_ACCOUNT_FREE(cmdline);
 			return appid_ret;
 		} else if (!g_strcmp0(cmdline, IMS_ENGINE_CMDLINE) || !g_strcmp0(cmdline, IMS_AGENT_CMDLINE)) {
-			if(_account_type_query_app_id_exist(RCS_APPID)==ACCOUNT_ERROR_NONE){
+			if(_account_type_query_app_id_exist_from_all_db(RCS_APPID) == ACCOUNT_ERROR_NONE) {
 				appid_ret = _account_get_text(RCS_APPID);
-			} else if(_account_type_query_app_id_exist(IMS_SERVICE_APPID)==ACCOUNT_ERROR_NONE){
+			} else if(_account_type_query_app_id_exist_from_all_db(IMS_SERVICE_APPID) == ACCOUNT_ERROR_NONE) {
 				appid_ret = _account_get_text(IMS_SERVICE_APPID);
 			} else {
 				appid_ret = _account_get_text(RCS_APPID);
@@ -227,6 +232,257 @@ static char* _account_get_current_appid(int pid)
 	}
 
 	return appid_ret;
+}
+
+static const char *_account_db_err_msg_in_global_db()
+{
+	return sqlite3_errmsg(g_hAccountGlobalDB);
+}
+
+static int _account_db_err_code_in_global_db()
+{
+	return sqlite3_errcode(g_hAccountGlobalDB);
+}
+
+static int _account_get_record_count_in_global_db(const char *query)
+{
+	_INFO("_account_get_record_count_in_global_db");
+
+	int rc = -1;
+	int ncount = 0;
+	account_stmt pStmt = NULL;
+
+	if(!query){
+		_ERR("NULL query\n");
+		return ACCOUNT_ERROR_QUERY_SYNTAX_ERROR;
+	}
+
+	if(!g_hAccountGlobalDB) {
+		_ERR("DB is not opened\n");
+		return ACCOUNT_ERROR_DB_NOT_OPENED;
+	}
+
+	rc = sqlite3_prepare_v2(g_hAccountGlobalDB, query, strlen(query), &pStmt, NULL);
+
+	if (SQLITE_BUSY == rc){
+		_ERR("sqlite3_prepare_v2() failed(%d, %s).", rc, _account_db_err_msg_in_global_db());
+		sqlite3_finalize(pStmt);
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	} else if (SQLITE_OK != rc) {
+		_ERR("sqlite3_prepare_v2() failed(%d, %s).", rc, _account_db_err_msg_in_global_db());
+		sqlite3_finalize(pStmt);
+		return ACCOUNT_ERROR_DB_FAILED;
+	}
+
+	rc = sqlite3_step(pStmt);
+	if (SQLITE_BUSY == rc) {
+		_ERR("sqlite3_step() failed(%d, %s).", rc, _account_db_err_msg_in_global_db());
+		sqlite3_finalize(pStmt);
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	} else if (SQLITE_ROW != rc) {
+		_ERR("sqlite3_step() failed(%d, %s).", rc, _account_db_err_msg_in_global_db());
+		sqlite3_finalize(pStmt);
+		return ACCOUNT_ERROR_DB_FAILED;
+	}
+
+	ncount = sqlite3_column_int(pStmt, 0);
+
+	_INFO("account record count [%d]", ncount);
+	sqlite3_finalize(pStmt);
+
+	return ncount;
+}
+/*
+static int _account_execute_query_in_global_db(const char *query)
+{
+	int rc = -1;
+	char* pszErrorMsg = NULL;
+
+	if(!query){
+		ACCOUNT_ERROR("NULL query\n");
+		return ACCOUNT_ERROR_QUERY_SYNTAX_ERROR;
+	}
+
+	if(!g_hAccountGlobalDB){
+		ACCOUNT_ERROR("Global DB is not opened\n");
+		return ACCOUNT_ERROR_DB_NOT_OPENED;
+	}
+
+	rc = sqlite3_exec(g_hAccountGlobalDB, query, NULL, NULL, &pszErrorMsg);
+	if (SQLITE_OK != rc) {
+		ACCOUNT_ERROR("sqlite3_exec rc(%d) query(%s) failed(%s).", rc, query, pszErrorMsg);
+		sqlite3_free(pszErrorMsg);
+	}
+
+	return rc;
+}
+*/
+/*
+static int _account_begin_transaction_in_global_db(void)
+{
+	ACCOUNT_DEBUG("_account_begin_transaction start");
+	int ret = -1;
+
+	ret = _account_execute_query_in_global_db("BEGIN IMMEDIATE TRANSACTION");
+
+	if (ret == SQLITE_BUSY){
+		ACCOUNT_ERROR(" sqlite3 busy = %d", ret);
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	} else if(ret != SQLITE_OK) {
+		ACCOUNT_ERROR("_account_svc_begin_transaction_in_global_db fail :: %d", ret);
+		return ACCOUNT_ERROR_DB_FAILED;
+	}
+
+	ACCOUNT_DEBUG("_account_begin_transaction_in_global_db end");
+	return ACCOUNT_ERROR_NONE;
+}
+
+static int _account_end_transaction_in_global_db(bool is_success)
+{
+	ACCOUNT_DEBUG("_account_end_transaction_in_global_db start");
+
+	int ret = -1;
+
+	if (is_success == true) {
+		ret = _account_execute_query_in_global_db("COMMIT TRANSACTION");
+		ACCOUNT_DEBUG("_account_end_transaction_in_global_db COMMIT");
+	} else {
+		ret = _account_execute_query_in_global_db("ROLLBACK TRANSACTION");
+		ACCOUNT_DEBUG("_account_end_transaction ROLLBACK");
+	}
+
+	if(ret == SQLITE_PERM) {
+		ACCOUNT_ERROR("Account permission denied :: %d", ret);
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	if (ret == SQLITE_BUSY){
+		ACCOUNT_DEBUG(" sqlite3 busy = %d", ret);
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	}
+
+	if (ret != SQLITE_OK) {
+		ACCOUNT_ERROR("_account_svc_end_transaction_in_global_db fail :: %d", ret);
+		return ACCOUNT_ERROR_DB_FAILED;
+	}
+
+	ACCOUNT_DEBUG("_account_end_transaction_in_global_db end");
+	return ACCOUNT_ERROR_NONE;
+}
+*/
+int _account_type_query_app_id_exist_in_global_db(const char *app_id)
+{
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int rc = 0;
+
+	ACCOUNT_RETURN_VAL((app_id != 0), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE AppId = '%s'", ACCOUNT_TYPE_TABLE, app_id);
+/*
+	pthread_mutex_lock(&account_global_mutex);
+
+	ret_transaction = _account_begin_transaction_in_global_db();
+
+	if(_account_db_err_code() == SQLITE_PERM){
+		pthread_mutex_unlock(&account_global_mutex);
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_global());
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	if (ret_transaction == ACCOUNT_ERROR_DATABASE_BUSY) {
+		ACCOUNT_ERROR("account insert:_account_begin_transaction fail %d\n", ret_transaction);
+		pthread_mutex_unlock(&account_global_mutex);
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	}else if (ret_transaction != ACCOUNT_ERROR_NONE) {
+		ACCOUNT_ERROR("account insert:_account_begin_transaction fail %d\n", ret_transaction);
+		pthread_mutex_unlock(&account_global_mutex);
+		return ret_transaction;
+	}
+*/
+	rc = _account_get_record_count_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		_ERR( "Global DB access failed(%s)", _account_db_err_msg_in_global_db());
+
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	if (rc <= 0) {
+		return ACCOUNT_ERROR_RECORD_NOT_FOUND;
+	}
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+int _account_global_db_open(void)
+{
+	int  rc = 0;
+	int ret = -1;
+	char account_db_path[256] = {0, };
+
+	_INFO( "start _account_global_db_open()");
+
+	ACCOUNT_MEMSET(account_db_path, 0x00, sizeof(account_db_path));
+	ACCOUNT_GET_GLOBAL_DB_PATH(account_db_path, sizeof(account_db_path));
+
+	if( g_hAccountGlobalDB ) {
+		_ERR( "Account database is using in another app. %x", g_hAccountDB );
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	}
+
+	ret = _account_db_handle_close(g_hAccountGlobalDB2);
+	if( ret != ACCOUNT_ERROR_NONE )
+		ACCOUNT_DEBUG( "db_util_close(g_hAccountGlobalDB2) fail ret = %d", ret);
+
+	ACCOUNT_DEBUG( "before db_util_open()");
+//	if(mode == ACCOUNT_DB_OPEN_READWRITE)
+//		rc = db_util_open(account_db_path, &g_hAccountDB, DB_UTIL_REGISTER_HOOK_METHOD);
+//	else if(mode == ACCOUNT_DB_OPEN_READONLY)
+	rc = db_util_open_with_options(account_db_path, &g_hAccountGlobalDB, SQLITE_OPEN_READONLY, NULL);
+//	else
+//		return ACCOUNT_ERROR_DB_NOT_OPENED;
+	ACCOUNT_DEBUG( "after db_util_open() sqlite_rc = %d", rc);
+
+	if( rc == SQLITE_PERM || _account_db_err_code_in_global_db() == SQLITE_PERM ) {
+		ACCOUNT_ERROR( "Account permission denied");
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	if( rc == SQLITE_BUSY ) {
+		ACCOUNT_ERROR( "busy handler fail.");
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	}
+
+	if( rc != SQLITE_OK ) {
+		ACCOUNT_ERROR( "The database isn't connected." );
+		return ACCOUNT_ERROR_DB_NOT_OPENED;
+	}
+
+	_INFO( "end _account_global_db_open()");
+	return ACCOUNT_ERROR_NONE;
+}
+
+int _account_global_db_close(void)
+{
+	ACCOUNT_DEBUG( "start account_global_db_close()");
+	int ret = -1;
+/*
+	ret = _account_db_handle_close(g_hAccountGlobalDB2);
+	if( ret != ACCOUNT_ERROR_NONE )
+		ACCOUNT_DEBUG( "db_util_close(g_hAccountGlobalDB2) fail ret = %d", ret);
+*/
+	ret = _account_db_handle_close(g_hAccountGlobalDB);
+	if( ret != ACCOUNT_ERROR_NONE )
+	{
+		ACCOUNT_ERROR( "db_util_close(g_hAccountGlobalDB) fail ret = %d", ret);
+		g_hAccountGlobalDB2 = g_hAccountGlobalDB;
+	}
+	g_hAccountGlobalDB = NULL;
+
+	return ret;
 }
 
 static int _account_check_account_type_with_appid_group(int uid, const char* appid, char** verified_appid)
@@ -310,7 +566,7 @@ static int _account_check_account_type_with_appid_group(int uid, const char* app
 	for(iter=appid_list;iter!=NULL;iter=g_slist_next(iter)){
 		char* tmp = (char*)iter->data;
 		if(tmp) {
-			if(_account_type_query_app_id_exist(tmp) == ACCOUNT_ERROR_NONE) {
+			if(_account_type_query_app_id_exist_from_all_db(tmp) == ACCOUNT_ERROR_NONE) {
 				*verified_appid = _account_get_text(tmp);
 				error_code = ACCOUNT_ERROR_NONE;
 				_ACCOUNT_FREE(tmp);
@@ -680,104 +936,95 @@ static bool _account_check_add_more_account(const char* app_id)
 //a) multi-user cases
 //b) to ensure db exist in every connect call
 
-//static int _account_create_all_tables(void)
-//{
-//	int rc = -1;
-//	int error_code = ACCOUNT_ERROR_NONE;
-//	char	query[ACCOUNT_SQL_LEN_MAX] = {0, };
+static int _account_create_all_tables(void)
+{
+	int rc = -1;
+	int error_code = ACCOUNT_ERROR_NONE;
+	char	query[ACCOUNT_SQL_LEN_MAX] = {0, };
 
-//	ACCOUNT_DEBUG("create all table - BEGIN");
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
+	_INFO("create all table - BEGIN");
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
 
-//	/*Create the account table*/
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", ACCOUNT_TABLE);
-//	rc = _account_get_record_count(query);
-//	if (rc <= 0) {
-//		rc = _account_execute_query(ACCOUNT_SCHEMA);
-//		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", ACCOUNT_SCHEMA, rc, _account_db_err_msg()));
+	/*Create the account table*/
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", ACCOUNT_TABLE);
+	rc = _account_get_record_count(query);
+	if (rc <= 0) {
+		rc = _account_execute_query(ACCOUNT_SCHEMA);
+		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
+		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", ACCOUNT_SCHEMA, rc, _account_db_err_msg()));
 
-//#ifndef _TIZEN_PUBLIC_
-//		if (CSC_FEATURE_BOOL_TRUE == csc_feature_get_bool(CSC_FEATURE_DEF_BOOL_CONTACTS_DOCOMO_SOCIAL_PHONEBOOK)) {
-//			/* NTT docomo specific area */
-//			rc = _account_execute_query(DOCOMO_DEFAULT_VAL_INSERT_QUERY);
-//			if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//			ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", DOCOMO_DEFAULT_VAL_INSERT_QUERY, rc, _account_db_err_msg()));
-//			/* END of NTT docomo specific area */
-//		}
-//#endif
-//	}
+	}
 
-//	/*Create capability table*/
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", CAPABILITY_TABLE);
-//	rc = _account_get_record_count(query);
-//	if (rc <= 0) {
-//		rc = _account_execute_query(CAPABILITY_SCHEMA);
-//		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", CAPABILITY_SCHEMA, rc, _account_db_err_msg()));
-//	}
+	/*Create capability table*/
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", CAPABILITY_TABLE);
+	rc = _account_get_record_count(query);
+	if (rc <= 0) {
+		rc = _account_execute_query(CAPABILITY_SCHEMA);
+		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
+		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", CAPABILITY_SCHEMA, rc, _account_db_err_msg()));
+	}
 
-//	/* Create account custom table */
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", ACCOUNT_CUSTOM_TABLE);
-//	rc = _account_get_record_count(query);
-//	if (rc <= 0) {
-//		rc = _account_execute_query(ACCOUNT_CUSTOM_SCHEMA);
-//		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", query, rc, _account_db_err_msg()));
-//	}
+	/* Create account custom table */
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", ACCOUNT_CUSTOM_TABLE);
+	rc = _account_get_record_count(query);
+	if (rc <= 0) {
+		rc = _account_execute_query(ACCOUNT_CUSTOM_SCHEMA);
+		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
+		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", query, rc, _account_db_err_msg()));
+	}
 
-//	/* Create account type table */
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", ACCOUNT_TYPE_TABLE);
-//	rc = _account_get_record_count(query);
-//	if (rc <= 0) {
-//		rc = _account_execute_query(ACCOUNT_TYPE_SCHEMA);
-//		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", ACCOUNT_TYPE_SCHEMA, rc, _account_db_err_msg()));
-//	}
+	/* Create account type table */
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", ACCOUNT_TYPE_TABLE);
+	rc = _account_get_record_count(query);
+	if (rc <= 0) {
+		rc = _account_execute_query(ACCOUNT_TYPE_SCHEMA);
+		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
+		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", ACCOUNT_TYPE_SCHEMA, rc, _account_db_err_msg()));
+	}
 
-//	/* Create label table */
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", LABEL_TABLE);
-//	rc = _account_get_record_count(query);
-//	if (rc <= 0) {
-//		rc = _account_execute_query(LABEL_SCHEMA);
-//		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", LABEL_SCHEMA, rc, _account_db_err_msg()));
-//	}
+	/* Create label table */
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", LABEL_TABLE);
+	rc = _account_get_record_count(query);
+	if (rc <= 0) {
+		rc = _account_execute_query(LABEL_SCHEMA);
+		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
+		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", LABEL_SCHEMA, rc, _account_db_err_msg()));
+	}
 
-//	/* Create account feature table */
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", PROVIDER_FEATURE_TABLE);
-//	rc = _account_get_record_count(query);
-//	if (rc <= 0) {
-//		rc = _account_execute_query(PROVIDER_FEATURE_SCHEMA);
-//		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
-//		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", PROVIDER_FEATURE_SCHEMA, rc, _account_db_err_msg()));
-//	}
+	/* Create account feature table */
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s')", PROVIDER_FEATURE_TABLE);
+	rc = _account_get_record_count(query);
+	if (rc <= 0) {
+		rc = _account_execute_query(PROVIDER_FEATURE_SCHEMA);
+		if(rc == SQLITE_BUSY) return ACCOUNT_ERROR_DATABASE_BUSY;
+		ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, ACCOUNT_ERROR_DB_FAILED, ("_account_execute_query(%s) failed(%d, %s).\n", PROVIDER_FEATURE_SCHEMA, rc, _account_db_err_msg()));
+	}
 
-//	ACCOUNT_DEBUG("create all table - END");
-//	return error_code;
-//}
+	_INFO("create all table - END");
+	return error_code;
+}
 
-//static int _account_check_is_all_table_exists()
-//{
-//	int 	rc = 0;
-//	char	query[ACCOUNT_SQL_LEN_MAX] = {0,};
-//	ACCOUNT_MEMSET(query, 0, sizeof(query));
+static int _account_check_is_all_table_exists()
+{
+	int 	rc = 0;
+	char	query[ACCOUNT_SQL_LEN_MAX] = {0,};
+	ACCOUNT_MEMSET(query, 0, sizeof(query));
 
-//	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s', '%s', '%s', '%s', '%s', '%s')",
-//			ACCOUNT_TABLE, CAPABILITY_TABLE, ACCOUNT_CUSTOM_TABLE, ACCOUNT_TYPE_TABLE, LABEL_TABLE, PROVIDER_FEATURE_TABLE);
-//	rc = _account_get_record_count(query);
+	ACCOUNT_SNPRINTF(query, sizeof(query), "select count(*) from sqlite_master where name in ('%s', '%s', '%s', '%s', '%s', '%s')",
+			ACCOUNT_TABLE, CAPABILITY_TABLE, ACCOUNT_CUSTOM_TABLE, ACCOUNT_TYPE_TABLE, LABEL_TABLE, PROVIDER_FEATURE_TABLE);
+	rc = _account_get_record_count(query);
 
-//	if (rc != ACCOUNT_TABLE_TOTAL_COUNT) {
-//		ACCOUNT_ERROR("Table count is not matched rc=%d\n", rc);
-//	}
+	if (rc != ACCOUNT_TABLE_TOTAL_COUNT) {
+		ACCOUNT_ERROR("Table count is not matched rc=%d\n", rc);
+	}
 
-//	return rc;
-//}
+	return rc;
+}
 
 int _account_db_handle_close(sqlite3* hDB)
 {
@@ -798,16 +1045,19 @@ int _account_db_handle_close(sqlite3* hDB)
 	return ret;
 }
 
-int _account_db_open(int mode, int pid)
+int _account_db_open(int mode, int pid, int uid)
 {
 	int  rc = 0;
 	int ret = -1;
+	char account_db_dir[256] = {0, };
 	char account_db_path[256] = {0, };
 
 	_INFO( "start _account_db_open()");
 
+	ACCOUNT_MEMSET(account_db_dir, 0x00, sizeof(account_db_dir));
 	ACCOUNT_MEMSET(account_db_path, 0x00, sizeof(account_db_path));
-	ACCOUNT_SNPRINTF(account_db_path, sizeof(account_db_path), "%s", ACCOUNT_DB_PATH);
+
+	ACCOUNT_GET_USER_DB_PATH(account_db_path, sizeof(account_db_path), uid);
 
 	if( g_hAccountDB ) {
 		_ERR( "Account database is using in another app. %x", g_hAccountDB );
@@ -818,13 +1068,18 @@ int _account_db_open(int mode, int pid)
 	if( ret != ACCOUNT_ERROR_NONE )
 		ACCOUNT_DEBUG( "db_util_close(g_hAccountDB2) fail ret = %d", ret);
 
+	ACCOUNT_GET_USER_DB_DIR(account_db_dir, sizeof(account_db_dir), uid);
+	if (-1 == access (account_db_dir, F_OK)) {
+		mkdir(account_db_dir, 644);
+	}
+
 	ACCOUNT_DEBUG( "before db_util_open()");
-	if(mode == ACCOUNT_DB_OPEN_READWRITE)
+//	if(mode == ACCOUNT_DB_OPEN_READWRITE)
 		rc = db_util_open(account_db_path, &g_hAccountDB, DB_UTIL_REGISTER_HOOK_METHOD);
-	else if(mode == ACCOUNT_DB_OPEN_READONLY)
-		rc = db_util_open_with_options(account_db_path, &g_hAccountDB, SQLITE_OPEN_READONLY, NULL);
-	else
-		return ACCOUNT_ERROR_DB_NOT_OPENED;
+//	else if(mode == ACCOUNT_DB_OPEN_READONLY)
+//		rc = db_util_open_with_options(account_db_path, &g_hAccountDB, SQLITE_OPEN_READONLY, NULL);
+//	else
+//		return ACCOUNT_ERROR_DB_NOT_OPENED;
 	ACCOUNT_DEBUG( "after db_util_open() sqlite_rc = %d", rc);
 
 	if( rc == SQLITE_PERM || _account_db_err_code() == SQLITE_PERM ) {
@@ -840,6 +1095,21 @@ int _account_db_open(int mode, int pid)
 	if( rc != SQLITE_OK ) {
 		ACCOUNT_ERROR( "The database isn't connected." );
 		return ACCOUNT_ERROR_DB_NOT_OPENED;
+	}
+
+	rc = _account_check_is_all_table_exists();
+
+	if (rc < 0) {
+		_ERR("_account_check_is_all_table_exists rc=[%d]", rc);
+		return rc;
+	} else if (rc == ACCOUNT_TABLE_TOTAL_COUNT) {
+		_INFO("Tables OK");
+	} else {
+		int ret = _account_create_all_tables();
+		if (ret != ACCOUNT_ERROR_NONE) {
+			_ERR("_account_create_all_tables fail ret=[%d]", ret);
+			return ret;
+		}
 	}
 
 	_INFO( "end _account_db_open()");
@@ -980,6 +1250,20 @@ static account_stmt _account_prepare_query(char *query)
 	return pStmt;
 }
 
+static account_stmt _account_prepare_query_in_global_db(char *query)
+{
+	int 			rc = -1;
+	account_stmt 	pStmt = NULL;
+
+	ACCOUNT_RETURN_VAL((query != NULL), {}, NULL, ("query is NULL"));
+
+	rc = sqlite3_prepare_v2(g_hAccountGlobalDB, query, strlen(query), &pStmt, NULL);
+
+	ACCOUNT_RETURN_VAL((SQLITE_OK == rc), {}, NULL, ("sqlite3_prepare_v2(%s) failed(%s).", query, _account_db_err_msg_in_global_db()));
+
+	return pStmt;
+}
+
 static int _account_query_bind_int(account_stmt pStmt, int pos, int num)
 {
 	if(!pStmt){
@@ -1102,6 +1386,27 @@ static int _account_query_finalize(account_stmt pStmt)
 		return ACCOUNT_ERROR_DATABASE_BUSY;
 	} else if (rc != SQLITE_OK) {
 		ACCOUNT_ERROR( "sqlite3_finalize fail, rc : %d, db_error : %s\n", rc, _account_db_err_msg());
+		return ACCOUNT_ERROR_DB_FAILED;
+	}
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+static int _account_query_finalize_in_global_db(account_stmt pStmt)
+{
+	int rc = -1;
+
+	if (!pStmt) {
+		ACCOUNT_ERROR( "pStmt is NULL");
+		return ACCOUNT_ERROR_INVALID_PARAMETER;
+	}
+
+	rc = sqlite3_finalize(pStmt);
+	if (rc == SQLITE_BUSY){
+		ACCOUNT_ERROR(" sqlite3 busy = %d", rc);
+		return ACCOUNT_ERROR_DATABASE_BUSY;
+	} else if (rc != SQLITE_OK) {
+		ACCOUNT_ERROR( "sqlite3_finalize fail, rc : %d, db_error : %s\n", rc, _account_db_err_msg_in_global_db());
 		return ACCOUNT_ERROR_DB_FAILED;
 	}
 
@@ -4493,35 +4798,37 @@ static void _account_type_convert_column_to_provider_feature(account_stmt hstmt,
 
 }
 
-GSList* _account_type_query_provider_feature_by_app_id(const char* app_id, int *error_code)
+GSList* _account_type_query_provider_feature_by_app_id_in_global_db(const char* app_id, int *error_code)
 {
-	_INFO("_account_type_query_provider_feature_by_app_id");
-	*error_code = ACCOUNT_ERROR_NONE;
-	account_stmt	hstmt = NULL;
-	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
-	int 			rc = 0, binding_count = 1;
+	_INFO("_account_type_query_provider_feature_by_app_id_in_global_db app_id=%s", app_id);
+	account_stmt hstmt = NULL;
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int rc = 0, binding_count = 1;
 	GSList* feature_list = NULL;
 
 	ACCOUNT_RETURN_VAL((app_id != NULL), {*error_code = ACCOUNT_ERROR_INVALID_PARAMETER;}, NULL, ("APP ID IS NULL"));
-	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {*error_code = ACCOUNT_ERROR_DB_NOT_OPENED;}, NULL, ("The database isn't connected."));
+	ACCOUNT_RETURN_VAL((error_code != NULL), {_ERR("error_code pointer is NULL");}, NULL, (""));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {*error_code = ACCOUNT_ERROR_INVALID_PARAMETER; _ERR("The database isn't connected.");}, NULL, ("The database isn't connected."));
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
 
 	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE app_id = ?", PROVIDER_FEATURE_TABLE);
 	_INFO("account query=[%s]", query);
 
-	hstmt = _account_prepare_query(query);
+	hstmt = _account_prepare_query_in_global_db(query);
 
-	if( _account_db_err_code() == SQLITE_PERM ){
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
 		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
 		*error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
 		return NULL;
 	}
 
+	_INFO("before _account_query_bind_text");
 	_account_query_bind_text(hstmt, binding_count++, app_id);
 
 	rc = _account_query_step(hstmt);
-	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {*error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;}, NULL, ("The record isn't found.\n"));
+
+	ACCOUNT_CATCH_ERROR_P(rc == SQLITE_ROW, {*error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND; _ERR("The record isn't found from global db. rc=[%d]", rc);}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
 
 	provider_feature_s* feature_record = NULL;
 
@@ -4544,32 +4851,180 @@ GSList* _account_type_query_provider_feature_by_app_id(const char* app_id, int *
 		rc = _account_query_step(hstmt);
 	}
 
-	rc = _account_query_finalize(hstmt);
-	ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {*error_code = rc;}, NULL, ("account finalize error"));
-	hstmt = NULL;
-
 	*error_code = ACCOUNT_ERROR_NONE;
 
 CATCH:
 	if (hstmt != NULL) {
-		rc = _account_query_finalize(hstmt);
-		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {*error_code = rc;}, NULL, ("account finalize error"));
-		hstmt = NULL;
+		rc = _account_query_finalize_in_global_db(hstmt);
+		if (rc != ACCOUNT_ERROR_NONE) {
+			*error_code = rc;
+			_ERR("global db fianlize error");
+		}
 	}
 
-	pthread_mutex_unlock(&account_mutex);
+	if (*error_code != ACCOUNT_ERROR_NONE) {
+		_account_type_gslist_feature_free(feature_list);
+	}
+
+	_INFO("Returning account feature_list from global db");
+	return feature_list;
+}
+
+GSList* _account_type_query_provider_feature_by_app_id(const char* app_id, int *error_code)
+{
+	_INFO("_account_type_query_provider_feature_by_app_id app_id=%s", app_id);
+	account_stmt hstmt = NULL;
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int rc = 0, binding_count = 1;
+	GSList* feature_list = NULL;
+
+	ACCOUNT_RETURN_VAL((app_id != NULL), {*error_code = ACCOUNT_ERROR_INVALID_PARAMETER;}, NULL, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((error_code != NULL), {_ERR("error_code pointer is NULL");}, NULL, (""));
+	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {*error_code = ACCOUNT_ERROR_DB_NOT_OPENED;}, NULL, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE app_id = ?", PROVIDER_FEATURE_TABLE);
+	_INFO("account query=[%s]", query);
+
+	hstmt = _account_prepare_query(query);
+
+	if( _account_db_err_code() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
+		*error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
+		return NULL;
+	}
+
+	_account_query_bind_text(hstmt, binding_count++, app_id);
+
+	rc = _account_query_step(hstmt);
+
+	ACCOUNT_CATCH_ERROR_P(rc == SQLITE_ROW, {*error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND; _ERR("The record isn't found from user db. rc=[%d]", rc);}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+
+	provider_feature_s* feature_record = NULL;
+
+	while (rc == SQLITE_ROW) {
+
+		feature_record = (provider_feature_s*) malloc(sizeof(provider_feature_s));
+
+		if (feature_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(feature_record, 0x00, sizeof(provider_feature_s));
+
+		_account_type_convert_column_to_provider_feature(hstmt, feature_record);
+
+		_INFO("Adding account feature_list");
+		feature_list = g_slist_append(feature_list, feature_record);
+
+		rc = _account_query_step(hstmt);
+	}
+
+	*error_code = ACCOUNT_ERROR_NONE;
+
+	rc = _account_query_finalize(hstmt);
+	ACCOUNT_CATCH_ERROR_P((rc == ACCOUNT_ERROR_NONE), {*error_code = rc;}, rc, ("account finalize error"));
+	hstmt = NULL;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize(hstmt);
+		if (rc != ACCOUNT_ERROR_NONE) {
+			*error_code = rc;
+			_ERR("account fianlize error");
+		}
+		hstmt = NULL;
+	}
+	_INFO("*error_code=[%d]", *error_code);
+
+	if (*error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		feature_list = _account_type_query_provider_feature_by_app_id_in_global_db(app_id, error_code);
+	}
+
+	if (*error_code != ACCOUNT_ERROR_NONE)
+		_account_type_gslist_feature_free(feature_list);
 
 	_INFO("Returning account feature_list");
 	return feature_list;
 }
 
-int account_type_query_provider_feature_by_app_id(provider_feature_cb callback, const char* app_id, void *user_data )
+int _account_type_query_provider_feature_cb_by_app_id_in_global_db(provider_feature_cb callback, const char* app_id, void *user_data )
 {
 	int 			error_code = ACCOUNT_ERROR_NONE;
 	account_stmt	hstmt = NULL;
 	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
 	int 			rc = 0, binding_count = 1;
 
+	_INFO("_account_type_query_provider_feature_cb_by_app_id_in_global_db start app_id=%s", app_id);
+	ACCOUNT_RETURN_VAL((app_id != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((callback != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO CALLBACK FUNCTION"));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE app_id = ?", PROVIDER_FEATURE_TABLE);
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_PERMISSION_DENIED, ("global db permission denied.\n"));
+	}
+
+	_account_query_bind_text(hstmt, binding_count++, app_id);
+
+	rc = _account_query_step(hstmt);
+	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {_ERR("The record isn't found. rc=[%d]", rc);}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+
+	provider_feature_s* feature_record = NULL;
+
+	while (rc == SQLITE_ROW) {
+		bool cb_ret = FALSE;
+		feature_record = (provider_feature_s*) malloc(sizeof(provider_feature_s));
+
+		if (feature_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(feature_record, 0x00, sizeof(provider_feature_s));
+
+		_account_type_convert_column_to_provider_feature(hstmt, feature_record);
+
+		cb_ret = callback(feature_record->app_id, feature_record->key, user_data);
+
+		_account_type_free_feature_with_items(feature_record);
+
+		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returns FALSE, its iteration is stopped!!!!\n"));
+
+		rc = _account_query_step(hstmt);
+	}
+
+	error_code = ACCOUNT_ERROR_NONE;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize_in_global_db(hstmt);
+		if (rc != ACCOUNT_ERROR_NONE) {
+			error_code = rc;
+			_ERR("global db finalize error[%d]", rc);
+		}
+		hstmt = NULL;
+	}
+
+	_INFO("_account_type_query_provider_feature_cb_by_app_id_in_global_db end. error_code=[%d]", error_code);
+	return error_code;
+}
+
+int _account_type_query_provider_feature_cb_by_app_id(provider_feature_cb callback, const char* app_id, void *user_data )
+{
+	int 			error_code = ACCOUNT_ERROR_NONE;
+	account_stmt	hstmt = NULL;
+	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int 			rc = 0, binding_count = 1;
+
+	_INFO("_account_type_query_provider_feature_cb_by_app_id start app_id=%s", app_id);
 	ACCOUNT_RETURN_VAL((app_id != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
 	ACCOUNT_RETURN_VAL((callback != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO CALLBACK FUNCTION"));
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
@@ -4587,7 +5042,7 @@ int account_type_query_provider_feature_by_app_id(provider_feature_cb callback, 
 	_account_query_bind_text(hstmt, binding_count++, app_id);
 
 	rc = _account_query_step(hstmt);
-	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found in user db.\n"));
 
 	provider_feature_s* feature_record = NULL;
 
@@ -4625,9 +5080,65 @@ CATCH:
 		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
 		hstmt = NULL;
 	}
-
-	pthread_mutex_unlock(&account_mutex);
+/*
+	if (error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = _account_type_query_provider_feature_cb_by_app_id_in_global_db(callback, app_id, user_data);
+	}
+*/
+	_INFO("_account_type_query_provider_feature_cb_by_app_id end");
 	return error_code;
+}
+
+int account_type_query_provider_feature_cb_by_app_id(provider_feature_cb callback, const char* app_id, void *user_data )
+{
+	int 			error_code = ACCOUNT_ERROR_NONE;
+
+	ACCOUNT_RETURN_VAL((app_id != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((callback != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO CALLBACK FUNCTION"));
+	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	error_code = _account_type_query_provider_feature_cb_by_app_id(callback, app_id, user_data);
+
+	if (error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = _account_type_query_provider_feature_cb_by_app_id_in_global_db(callback, app_id, user_data);
+	}
+
+	return error_code;
+}
+
+bool _account_type_query_supported_feature_in_global_db(const char* app_id, const char* capability, int *error_code)
+{
+	_INFO("_account_type_query_supported_feature_in_global_db start");
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	*error_code = ACCOUNT_ERROR_NONE;
+
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int record_count = 0;
+
+	if (app_id == NULL || capability == NULL)
+	{
+		*error_code = ACCOUNT_ERROR_INVALID_PARAMETER;
+		return false;
+	}
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s where app_id='%s' and key='%s'", PROVIDER_FEATURE_TABLE, app_id, capability);
+
+	record_count = _account_get_record_count_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		*error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	if (record_count <= 0)
+	{
+		*error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return false;
+	}
+
+	_INFO("_account_type_query_supported_feature_in_global_db end");
+	return true;
 }
 
 bool _account_type_query_supported_feature(const char* app_id, const char* capability, int *error_code)
@@ -4657,70 +5168,14 @@ bool _account_type_query_supported_feature(const char* app_id, const char* capab
 
 	if (record_count <= 0)
 	{
-		*error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
-		return false;
+		bool is_exist = false;
+		is_exist = _account_type_query_supported_feature_in_global_db(app_id, capability, error_code);
+		if (!is_exist)
+			return false;
 	}
 
 	_INFO("_account_type_query_supported_feature end");
 	return true;
-
-}
-
-
-int account_type_get_provider_feature_all(account_type_h account_type, provider_feature_cb callback, void* user_data)
-{
-	ACCOUNT_RETURN_VAL((account_type != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("ACCOUNT HANDLE IS NULL"));
-	ACCOUNT_RETURN_VAL((callback != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO CALLBACK FUNCTION"));
-
-	GSList *iter;
-	account_type_s *data = (account_type_s*)account_type;
-
-	for (iter = data->provider_feature_list; iter != NULL; iter = g_slist_next(iter)) {
-		provider_feature_s *feature_data = NULL;
-
-		feature_data = (provider_feature_s*)iter->data;
-
-		if(callback(feature_data->app_id, feature_data->key, user_data)!=TRUE) {
-			ACCOUNT_DEBUG("Callback func returs FALSE, its iteration is stopped!!!!\n");
-			return ACCOUNT_ERROR_NONE;
-		}
-	}
-
-	return ACCOUNT_ERROR_NONE;
-}
-
-int account_type_set_provider_feature(account_type_h account_type, const char* provider_feature)
-{
-	ACCOUNT_RETURN_VAL((account_type != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("account type handle is null"));
-	ACCOUNT_RETURN_VAL((provider_feature != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("provider_feature is null"));
-
-	account_type_s *data = (account_type_s*)account_type;
-
-	GSList *iter = NULL;
-	bool b_is_new = TRUE;
-
-	for(iter = data->provider_feature_list; iter != NULL; iter = g_slist_next(iter)) {
-		provider_feature_s *feature_data = NULL;
-		feature_data = (provider_feature_s*)iter->data;
-
-		if(!strcmp(feature_data->key, provider_feature)) {
-			b_is_new = FALSE;
-			break;
-		}
-	}
-
-	if(b_is_new) {
-		provider_feature_s* feature_data = (provider_feature_s*)malloc(sizeof(provider_feature_s));
-
-		if (feature_data == NULL)
-			return ACCOUNT_ERROR_OUT_OF_MEMORY;
-		ACCOUNT_MEMSET(feature_data, 0, sizeof(provider_feature_s));
-
-		feature_data->key = _account_get_text(provider_feature);
-		data->provider_feature_list = g_slist_append(data->provider_feature_list, (gpointer)feature_data);
-	}
-
-	return ACCOUNT_ERROR_NONE;
 }
 
 static int _account_type_insert_provider_feature(account_type_s *account_type, const char* app_id)
@@ -5246,6 +5701,69 @@ static void _account_type_convert_column_to_label(account_stmt hstmt, label_s *l
 
 }
 
+GSList* _account_type_get_label_list_by_app_id_in_global_db(const char* app_id, int *error_code )
+{
+	*error_code = ACCOUNT_ERROR_NONE;
+	account_stmt	hstmt = NULL;
+	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int 			rc = 0, binding_count = 1;
+	GSList* label_list = NULL;
+
+	ACCOUNT_RETURN_VAL((app_id != NULL), {*error_code = ACCOUNT_ERROR_INVALID_PARAMETER;}, NULL, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE AppId = ?", LABEL_TABLE);
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		*error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
+
+		goto CATCH;
+	}
+
+	_account_query_bind_text(hstmt, binding_count++, app_id);
+
+	rc = _account_query_step(hstmt);
+	ACCOUNT_CATCH_ERROR_P((rc == SQLITE_ROW), {_ERR("The record isn't found. rc=[%d] done", rc);}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+
+	label_s* label_record = NULL;
+
+	while (rc == SQLITE_ROW) {
+		label_record = (label_s*) malloc(sizeof(label_s));
+
+		if (label_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(label_record, 0x00, sizeof(label_s));
+
+		_account_type_convert_column_to_label(hstmt, label_record);
+
+		_INFO("Adding account label_list");
+		label_list = g_slist_append (label_list, label_record);
+
+		rc = _account_query_step(hstmt);
+	}
+
+	*error_code = ACCOUNT_ERROR_NONE;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize_in_global_db(hstmt);
+		if (rc != ACCOUNT_ERROR_NONE) {
+			_ERR("global db finalize error[%d]", rc);
+		}
+		hstmt = NULL;
+	}
+
+	_INFO("Returning account global label_list");
+	return label_list;
+}
+
 GSList* _account_type_get_label_list_by_app_id(const char* app_id, int *error_code )
 {
 	*error_code = ACCOUNT_ERROR_NONE;
@@ -5306,12 +5824,83 @@ CATCH:
 		hstmt = NULL;
 	}
 
-	pthread_mutex_unlock(&account_mutex);
+	if (*error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		label_list = _account_type_get_label_list_by_app_id_in_global_db(app_id, error_code);
+	}
+
 	_INFO("Returning account label_list");
 	return label_list;
 }
 
-int account_type_query_label_by_app_id(account_label_cb callback, const char* app_id, void *user_data )
+int _account_type_query_label_by_app_id_in_global_db(account_label_cb callback, const char* app_id, void *user_data )
+{
+	int 			error_code = ACCOUNT_ERROR_NONE;
+	account_stmt	hstmt = NULL;
+	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int 			rc = 0, binding_count = 1;
+
+	_INFO("account_type_query_label_by_app_id_in_global_db start");
+
+	ACCOUNT_RETURN_VAL((app_id != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((callback != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO CALLBACK FUNCTION"));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE AppId = ?", LABEL_TABLE);
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
+		goto CATCH;
+	}
+
+	_account_query_bind_text(hstmt, binding_count++, app_id);
+
+	rc = _account_query_step(hstmt);
+	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+
+	label_s* label_record = NULL;
+
+	while (rc == SQLITE_ROW) {
+		bool cb_ret = FALSE;
+		label_record = (label_s*) malloc(sizeof(label_s));
+
+		if (label_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(label_record, 0x00, sizeof(label_s));
+
+		_account_type_convert_column_to_label(hstmt, label_record);
+
+		cb_ret = callback(label_record->app_id, label_record->label , label_record->locale, user_data);
+
+		_account_type_free_label_with_items(label_record);
+
+		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
+
+		rc = _account_query_step(hstmt);
+	}
+
+	error_code = ACCOUNT_ERROR_NONE;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize_in_global_db(hstmt);
+		if (rc != ACCOUNT_ERROR_NONE) {
+			_ERR("global db finalize error[%d]", rc);
+		}
+		hstmt = NULL;
+	}
+
+	_INFO("account_type_query_label_by_app_id_in_global_db end [%d]", error_code);
+	return error_code;
+}
+
+int _account_type_query_label_by_app_id(account_label_cb callback, const char* app_id, void *user_data )
 {
 	int 			error_code = ACCOUNT_ERROR_NONE;
 	account_stmt	hstmt = NULL;
@@ -5356,7 +5945,11 @@ int account_type_query_label_by_app_id(account_label_cb callback, const char* ap
 
 		_account_type_free_label_with_items(label_record);
 
-		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
+//		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
+		if(cb_ret == TRUE) {
+			_INFO("Callback func returs FALSE, its iteration is stopped!!!!\n");
+			break;
+		}
 
 		rc = _account_query_step(hstmt);
 	}
@@ -5373,8 +5966,28 @@ CATCH:
 		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
 		hstmt = NULL;
 	}
+/*
+	if (error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = account_type_query_label_by_app_id_in_global_db(callback, app_id, user_data);
+	}
+*/
+	return error_code;
+}
 
-	pthread_mutex_unlock(&account_mutex);
+int account_type_query_label_by_app_id(account_label_cb callback, const char* app_id, void *user_data )
+{
+	int 			error_code = ACCOUNT_ERROR_NONE;
+
+	ACCOUNT_RETURN_VAL((app_id != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((callback != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO CALLBACK FUNCTION"));
+	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	error_code = _account_type_query_label_by_app_id(callback, app_id, user_data);
+
+	if (error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = _account_type_query_label_by_app_id_in_global_db(callback, app_id, user_data);
+	}
+
 	return error_code;
 }
 
@@ -5438,6 +6051,60 @@ bool _account_get_provider_feature_cb(char* app_id, char* key, void* user_data)
 	return TRUE;
 }
 
+int _account_type_query_by_app_id_in_global_db(const char* app_id, account_type_s** account_type_record)
+{
+	_INFO("_account_type_query_by_app_id_in_global_db start");
+
+	int 			error_code = ACCOUNT_ERROR_NONE;
+	account_stmt	hstmt = NULL;
+	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int 			rc = 0, binding_count = 1;
+
+	ACCOUNT_RETURN_VAL((app_id != 0), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("APP ID IS NULL"));
+	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE AppId = ?", ACCOUNT_TYPE_TABLE);
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	_account_query_bind_text(hstmt, binding_count++, app_id);
+
+	rc = _account_query_step(hstmt);
+	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+
+	*account_type_record = create_empty_account_type_instance();
+
+	while (rc == SQLITE_ROW) {
+		_account_type_convert_column_to_account_type(hstmt, *account_type_record);
+		rc = _account_query_step(hstmt);
+	}
+
+	rc = _account_query_finalize_in_global_db(hstmt);
+	ACCOUNT_CATCH_ERROR((rc == ACCOUNT_ERROR_NONE), {_ERR("global db finalize error rc=[%d]", rc);}, rc, ("finalize error"));
+	_account_type_query_label_by_app_id_in_global_db(_account_get_label_text_cb, app_id, (void*)(*account_type_record));
+	_account_type_query_provider_feature_cb_by_app_id_in_global_db(_account_get_provider_feature_cb, app_id,(void*)(*account_type_record));
+
+	hstmt = NULL;
+	error_code = ACCOUNT_ERROR_NONE;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize(hstmt);
+		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
+		hstmt = NULL;
+	}
+
+	_INFO("_account_type_query_by_app_id_in_global_db end [%d]", error_code);
+	return error_code;
+}
+
 int _account_type_query_by_app_id(const char* app_id, account_type_s** account_type_record)
 {
 	_INFO("_account_type_query_by_app_id start");
@@ -5480,8 +6147,8 @@ int _account_type_query_by_app_id(const char* app_id, account_type_s** account_t
 
 	rc = _account_query_finalize(hstmt);
 	ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
-	account_type_query_label_by_app_id(_account_get_label_text_cb, app_id, (void*)(*account_type_record));
-	account_type_query_provider_feature_by_app_id(_account_get_provider_feature_cb, app_id,(void*)(*account_type_record));
+	_account_type_query_label_by_app_id(_account_get_label_text_cb, app_id, (void*)(*account_type_record));
+	_account_type_query_provider_feature_cb_by_app_id(_account_get_provider_feature_cb, app_id,(void*)(*account_type_record));
 
 	hstmt = NULL;
 	error_code = ACCOUNT_ERROR_NONE;
@@ -5493,7 +6160,10 @@ CATCH:
 		hstmt = NULL;
 	}
 
-	pthread_mutex_unlock(&account_mutex);
+	if (error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = _account_type_query_by_app_id_in_global_db(app_id, account_type_record);
+	}
+
 	_INFO("_account_type_query_by_app_id end [%d]", error_code);
 	return error_code;
 }
@@ -5523,14 +6193,140 @@ int _account_type_query_app_id_exist(const char* app_id)
 	return ACCOUNT_ERROR_NONE;
 }
 
-GSList* _account_type_query_by_provider_feature(const char* key, int *error_code)
+int _account_type_query_app_id_exist_from_all_db(const char *app_id)
 {
-	*error_code = ACCOUNT_ERROR_NONE;
+	_INFO("_account_type_query_app_id_exist_from_all_db start app_id=%s", app_id);
+	int return_code = ACCOUNT_ERROR_NONE;
+
+	return_code = _account_type_query_app_id_exist(app_id);
+
+	if (return_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		return_code = _account_type_query_app_id_exist_in_global_db(app_id);
+	} else {
+		return return_code;
+	}
+	_INFO("_account_type_query_app_id_exist_from_all_db end");
+	return return_code;
+}
+
+int _account_type_query_by_provider_feature_in_global_db(const char* key, GSList **account_type_list_all)
+{
+	int error_code = ACCOUNT_ERROR_NONE;
 	account_stmt	hstmt = NULL;
 	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
 	int 			rc = 0;
 	GSList			*account_type_list = NULL;
 
+	_INFO("_account_type_query_by_provider_feature_in_global_db start key=%s", key);
+	if(key == NULL)
+	{
+		ACCOUNT_ERROR("capability_type IS NULL.");
+		error_code = ACCOUNT_ERROR_INVALID_PARAMETER;
+		goto CATCH;
+	}
+
+	if(g_hAccountGlobalDB == NULL)
+	{
+		ACCOUNT_ERROR("The database isn't connected.");
+		error_code = ACCOUNT_ERROR_DB_NOT_OPENED;
+		goto CATCH;
+	}
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE AppId IN (SELECT app_id from %s WHERE key=?)", ACCOUNT_TYPE_TABLE, PROVIDER_FEATURE_TABLE);
+
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM )
+	{
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
+		goto CATCH;
+	}
+
+	int binding_count = 1;
+	_account_query_bind_text(hstmt, binding_count++, key);
+
+	rc = _account_query_step(hstmt);
+
+	account_type_s *account_type_record = NULL;
+
+	if(rc != SQLITE_ROW)
+	{
+		ACCOUNT_ERROR("The record isn't found. rc=[%d]", rc);
+		error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		goto CATCH;
+	}
+
+	while(rc == SQLITE_ROW) {
+		account_type_record = (account_type_s*) malloc(sizeof(account_type_s));
+
+		if (account_type_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(account_type_record, 0x00, sizeof(account_type_s));
+		_account_type_convert_column_to_account_type(hstmt, account_type_record);
+		account_type_list = g_slist_append(account_type_list, account_type_record);
+		rc = _account_query_step(hstmt);
+	}
+
+	rc = _account_query_finalize_in_global_db(hstmt);
+	if (rc != ACCOUNT_ERROR_NONE )
+	{
+		_account_type_gslist_account_type_free(account_type_list);
+		ACCOUNT_ERROR("finalize error(%s)", rc);
+		error_code = rc;
+		goto CATCH;
+	}
+	hstmt = NULL;
+
+	GSList* iter;
+
+	for (iter = account_type_list; iter != NULL; iter = g_slist_next(iter)) {
+		account_type_s *account_type = NULL;
+		account_type = (account_type_s*)iter->data;
+		_account_type_query_label_by_app_id_in_global_db(_account_get_label_text_cb,account_type->app_id,(void*)account_type);
+		_account_type_query_provider_feature_cb_by_app_id_in_global_db(_account_get_provider_feature_cb, account_type->app_id,(void*)account_type);
+		_INFO("add label & provider_feature");
+	}
+
+	for (iter = account_type_list; iter != NULL; iter = g_slist_next(iter)) {
+
+		account_type_s *account_type = NULL;
+		account_type = (account_type_s*)iter->data;
+		*account_type_list_all = g_slist_append(*account_type_list_all, account_type);
+		_INFO("add account_type");
+	}
+
+	error_code = ACCOUNT_ERROR_NONE;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize_in_global_db(hstmt);
+		if (rc != ACCOUNT_ERROR_NONE)
+		{
+			ACCOUNT_ERROR("finalize error(%s)", rc);
+			return rc;
+		}
+		hstmt = NULL;
+	}
+
+	_INFO("_account_type_query_by_provider_feature_in_global_db end. error_code=[%d]", error_code);
+	return error_code;
+}
+
+GSList* _account_type_query_by_provider_feature(const char* key, int *error_code)
+{
+	*error_code = ACCOUNT_ERROR_NONE;
+	account_stmt hstmt = NULL;
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int rc = 0;
+	GSList *account_type_list = NULL;
+
+	_INFO("account_type_query_by_provider_feature start key=%s", key);
 	if(key == NULL)
 	{
 		ACCOUNT_ERROR("capability_type IS NULL.");
@@ -5567,7 +6363,7 @@ GSList* _account_type_query_by_provider_feature(const char* key, int *error_code
 
 	if(rc != SQLITE_ROW)
 	{
-		ACCOUNT_ERROR("The record isn't found.");
+		ACCOUNT_ERROR("The record isn't found. rc=[%d]", rc);
 		*error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		goto CATCH;
 	}
@@ -5601,8 +6397,8 @@ GSList* _account_type_query_by_provider_feature(const char* key, int *error_code
 	for (iter = account_type_list; iter != NULL; iter = g_slist_next(iter)) {
 		account_type_s *account_type = NULL;
 		account_type = (account_type_s*)iter->data;
-		account_type_query_label_by_app_id(_account_get_label_text_cb,account_type->app_id,(void*)account_type);
-		account_type_query_provider_feature_by_app_id(_account_get_provider_feature_cb, account_type->app_id,(void*)account_type);
+		_account_type_query_label_by_app_id(_account_get_label_text_cb,account_type->app_id,(void*)account_type);
+		_account_type_query_provider_feature_cb_by_app_id(_account_get_provider_feature_cb, account_type->app_id,(void*)account_type);
 	}
 
 	*error_code = ACCOUNT_ERROR_NONE;
@@ -5618,17 +6414,101 @@ CATCH:
 		hstmt = NULL;
 	}
 
+	if (*error_code == ACCOUNT_ERROR_NONE || *error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		*error_code = _account_type_query_by_provider_feature_in_global_db(key, &account_type_list);
+	}
+
+	_INFO("account_type_query_by_provider_feature end");
 	return account_type_list;
 }
 
+int _account_type_query_all_in_global_db(GSList **account_type_list_all)
+{
+	account_stmt	hstmt = NULL;
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int rc = ACCOUNT_ERROR_NONE;
+	int error_code = ACCOUNT_ERROR_NONE;
+	GSList *account_type_list = NULL;
+
+	_INFO("_account_type_query_all_in_global_db start");
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, NULL, ("The database isn't connected."));
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s ", ACCOUNT_TYPE_TABLE);
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	rc = _account_query_step(hstmt);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	account_type_s *account_type_record = NULL;
+
+	if (rc != SQLITE_ROW)
+	{
+		_INFO("[ACCOUNT_ERROR_RECORD_NOT_FOUND]The record isn't found.");
+		error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		goto CATCH;
+	}
+
+	while(rc == SQLITE_ROW) {
+		account_type_record = (account_type_s*) malloc(sizeof(account_type_s));
+
+		if (account_type_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(account_type_record, 0x00, sizeof(account_type_s));
+		_account_type_convert_column_to_account_type(hstmt, account_type_record);
+		account_type_list = g_slist_append(account_type_list, account_type_record);
+		rc = _account_query_step(hstmt);
+	}
+
+	rc = _account_query_finalize_in_global_db(hstmt);
+	ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
+	hstmt = NULL;
+
+	GSList* iter;
+
+	for (iter = account_type_list; iter != NULL; iter = g_slist_next(iter)) {
+		account_type_s *account_type = NULL;
+		account_type = (account_type_s*)iter->data;
+		_account_type_query_label_by_app_id_in_global_db(_account_get_label_text_cb,account_type->app_id,(void*)account_type);
+		_account_type_query_provider_feature_cb_by_app_id_in_global_db(_account_get_provider_feature_cb, account_type->app_id,(void*)account_type);
+	}
+
+	for (iter = account_type_list; iter != NULL; iter = g_slist_next(iter)) {
+		account_type_s *account_type = NULL;
+		account_type = (account_type_s*)iter->data;
+		*account_type_list_all = g_slist_append(*account_type_list_all, account_type);
+	}
+
+	error_code = ACCOUNT_ERROR_NONE;
+CATCH:
+	if (hstmt != NULL)
+	{
+		rc = _account_query_finalize_in_global_db(hstmt);
+		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {_account_type_gslist_account_type_free(account_type_list);}, rc, ("finalize error"));
+		hstmt = NULL;
+	}
+
+	_INFO("_account_type_query_all_in_global_db end");
+	return error_code;
+}
 
 GSList* _account_type_query_all(void)
 {
-	account_stmt	hstmt = NULL;
-	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
-	int 			rc = 0;
-	GSList			*account_type_list = NULL;
+	account_stmt hstmt = NULL;
+	char query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int rc = 0;
+	int error_code = ACCOUNT_ERROR_NONE;
+	GSList *account_type_list = NULL;
 
+	_INFO("_account_type_query_all start");
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, NULL, ("The database isn't connected."));
 
 	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
@@ -5648,6 +6528,7 @@ GSList* _account_type_query_all(void)
 	if (rc != SQLITE_ROW)
 	{
 		_INFO("[ACCOUNT_ERROR_RECORD_NOT_FOUND]The record isn't found.");
+		error_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		goto CATCH;
 	}
 
@@ -5674,10 +6555,11 @@ GSList* _account_type_query_all(void)
 	for (iter = account_type_list; iter != NULL; iter = g_slist_next(iter)) {
 		account_type_s *account_type = NULL;
 		account_type = (account_type_s*)iter->data;
-		account_type_query_label_by_app_id(_account_get_label_text_cb,account_type->app_id,(void*)account_type);
-		account_type_query_provider_feature_by_app_id(_account_get_provider_feature_cb, account_type->app_id,(void*)account_type);
+		_account_type_query_label_by_app_id(_account_get_label_text_cb,account_type->app_id,(void*)account_type);
+		_account_type_query_provider_feature_cb_by_app_id(_account_get_provider_feature_cb, account_type->app_id,(void*)account_type);
 	}
 
+	error_code = ACCOUNT_ERROR_NONE;
 CATCH:
 	if (hstmt != NULL)
 	{
@@ -5686,7 +6568,99 @@ CATCH:
 		hstmt = NULL;
 	}
 
+	if (error_code == ACCOUNT_ERROR_NONE || error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = _account_type_query_all_in_global_db(&account_type_list);
+	}
+
+	_INFO("_account_type_query_all end");
 	return account_type_list;
+}
+
+// output parameter label must be free
+int _account_type_query_label_by_locale_in_global_db(const char* app_id, const char* locale, char **label)
+{
+	int 			error_code = ACCOUNT_ERROR_NONE;
+	account_stmt	hstmt = NULL;
+	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
+	int 			rc = 0, binding_count = 1;
+	char*			converted_locale = NULL;
+
+	ACCOUNT_RETURN_VAL((app_id != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("NO APP ID"));
+	ACCOUNT_RETURN_VAL((g_hAccountGlobalDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
+	ACCOUNT_RETURN_VAL((label != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("label char is null"));
+	ACCOUNT_RETURN_VAL((locale != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("locale char is null"));
+	//Making label newly created
+
+	ACCOUNT_MEMSET(query, 0x00, ACCOUNT_SQL_LEN_MAX);
+
+	converted_locale = _account_get_text(locale);
+	gchar** tokens = g_strsplit(converted_locale, "-", 2);
+
+	if(tokens != NULL) {
+		if((char*)(tokens[1]) != NULL) {
+			char* upper_token = g_ascii_strup(tokens[1], strlen(tokens[1]));
+			if(upper_token != NULL) {
+				_ACCOUNT_FREE(converted_locale);
+				converted_locale = g_strdup_printf("%s_%s", tokens[0], upper_token);
+			}
+			_ACCOUNT_FREE(upper_token);
+		}
+	}
+	g_strfreev(tokens);
+
+	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT * FROM %s WHERE AppId = ? AND Locale = '%s' ", LABEL_TABLE, converted_locale);
+	_ACCOUNT_FREE(converted_locale);
+
+	hstmt = _account_prepare_query_in_global_db(query);
+
+	if( _account_db_err_code_in_global_db() == SQLITE_PERM ){
+		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg_in_global_db());
+		return ACCOUNT_ERROR_PERMISSION_DENIED;
+	}
+
+	_account_query_bind_text(hstmt, binding_count++, app_id);
+
+	rc = _account_query_step(hstmt);
+	ACCOUNT_CATCH_ERROR(rc == SQLITE_ROW, {}, ACCOUNT_ERROR_RECORD_NOT_FOUND, ("The record isn't found.\n"));
+
+	label_s* label_record = NULL;
+
+	while (rc == SQLITE_ROW) {
+		label_record = (label_s*) malloc(sizeof(label_s));
+
+		if (label_record == NULL) {
+			ACCOUNT_FATAL("malloc Failed");
+			break;
+		}
+
+		ACCOUNT_MEMSET(label_record, 0x00, sizeof(label_s));
+
+		_account_type_convert_column_to_label(hstmt,label_record);
+
+		_ACCOUNT_FREE(*label);
+		//Making label newly created
+		*label = _account_get_text(label_record->label);
+
+		_account_type_free_label_with_items(label_record);
+
+		rc = _account_query_step(hstmt);
+	}
+
+	rc = _account_query_finalize_in_global_db(hstmt);
+	ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
+	hstmt = NULL;
+
+	error_code = ACCOUNT_ERROR_NONE;
+
+CATCH:
+	if (hstmt != NULL) {
+		rc = _account_query_finalize_in_global_db(hstmt);
+		ACCOUNT_RETURN_VAL((rc == ACCOUNT_ERROR_NONE), {}, rc, ("finalize error"));
+		hstmt = NULL;
+	}
+
+	_INFO("_account_type_query_label_by_locale_in_global_db() end : error_code = %d", error_code);
+	return error_code;
 }
 
 // output parameter label must be free
@@ -5772,7 +6746,10 @@ int _account_type_query_label_by_locale(const char* app_id, const char* locale, 
 		hstmt = NULL;
 	}
 
-	pthread_mutex_unlock(&account_mutex);
+	if (error_code == ACCOUNT_ERROR_RECORD_NOT_FOUND) {
+		error_code = _account_type_query_label_by_locale_in_global_db(app_id, locale, label);
+	}
+
 	_INFO("_account_type_query_label_by_locale() end : error_code = %d", error_code);
 	return error_code;
 }

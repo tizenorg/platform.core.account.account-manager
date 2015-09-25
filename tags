@@ -1,0 +1,217 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+ACCOUNT_DB_OPEN_READONLY	server/src/account-server-db.c	65;"	d	file:
+ACCOUNT_DB_OPEN_READWRITE	server/src/account-server-db.c	66;"	d	file:
+ACCOUNT_MGR_DBUS_PATH	server/src/account-server.c	42;"	d	file:
+ACTIVESYNC_APPID	server/src/account-server-db.c	54;"	d	file:
+DS_AGENT_CMDLINE	server/src/account-server-db.c	57;"	d	file:
+EASYSIGNUP_APPID	server/src/account-server-db.c	63;"	d	file:
+EASYSIGNUP_CMDLINE	server/src/account-server-db.c	62;"	d	file:
+EAS_CMDLINE	server/src/account-server-db.c	46;"	d	file:
+EMAIL_APPID	server/src/account-server-db.c	55;"	d	file:
+EMAIL_SERVICE_CMDLINE	server/src/account-server-db.c	47;"	d	file:
+FACEBOOK_APPID	server/src/account-server-db.c	60;"	d	file:
+FACEBOOK_SDK_APPID	server/src/account-server-db.c	59;"	d	file:
+IMS_AGENT_CMDLINE	server/src/account-server-db.c	49;"	d	file:
+IMS_ENGINE_CMDLINE	server/src/account-server-db.c	48;"	d	file:
+IMS_SERVICE_APPID	server/src/account-server-db.c	53;"	d	file:
+MAX_TEXT	server/src/account-server-db.c	68;"	d	file:
+MDM_SERVER_CMDLINE	server/src/account-server-db.c	50;"	d	file:
+RCS_APPID	server/src/account-server-db.c	52;"	d	file:
+SYNCHRONISE_APPID	server/src/account-server-db.c	56;"	d	file:
+TEST_APP_ID	server/src/account-server-db.c	45;"	d	file:
+_DEFAULT_SOURCE	server/src/account-server.c	19;"	d	file:
+_PRIVILEGE_ACCOUNT_READ	server/src/account-server.c	39;"	d	file:
+_PRIVILEGE_ACCOUNT_WRITE	server/src/account-server.c	40;"	d	file:
+_TIZEN_PUBLIC_	server/src/account-server-db.c	70;"	d	file:
+__check_privilege_by_cynara	server/src/account-server.c	/^static int __check_privilege_by_cynara(const char *client, const char *session, const char *user, const char *privilege)$/;"	f	file:
+__get_information_for_cynara_check	server/src/account-server.c	/^int __get_information_for_cynara_check(GDBusMethodInvocation *invocation, char **client, char **user, char **session)$/;"	f
+__read_proc	server/src/account-server-db.c	/^static inline int __read_proc(const char *path, char *buf, int size)$/;"	f	file:
+_account_begin_transaction	server/src/account-server-db.c	/^static int _account_begin_transaction(void)$/;"	f	file:
+_account_check_account_type_with_appid_group	server/src/account-server-db.c	/^static int _account_check_account_type_with_appid_group(int uid, const char* appid, char** verified_appid)$/;"	f	file:
+_account_check_add_more_account	server/src/account-server-db.c	/^static bool _account_check_add_more_account(const char* app_id)$/;"	f	file:
+_account_check_appid_group_with_package_name	server/src/account-server-db.c	/^static int _account_check_appid_group_with_package_name(int uid, const char* appid, char* package_name)$/;"	f	file:
+_account_check_duplicated	server/src/account-server-db.c	/^static int _account_check_duplicated(account_s *data, const char* verified_appid)$/;"	f	file:
+_account_check_is_all_table_exists	server/src/account-server-db.c	/^static int _account_check_is_all_table_exists()$/;"	f	file:
+_account_compare_old_record	server/src/account-server-db.c	/^static int _account_compare_old_record(account_s *new_account, int account_id)$/;"	f	file:
+_account_compare_old_record_by_user_name	server/src/account-server-db.c	/^static int _account_compare_old_record_by_user_name(account_s *new_account, const char* user_name, const char* package_name)$/;"	f	file:
+_account_convert_account_to_sql	server/src/account-server-db.c	/^static int _account_convert_account_to_sql(account_s *account, account_stmt hstmt, char *sql_value)$/;"	f	file:
+_account_convert_column_to_account	server/src/account-server-db.c	/^static void _account_convert_column_to_account(account_stmt hstmt, account_s *account_record)$/;"	f	file:
+_account_convert_column_to_capability	server/src/account-server-db.c	/^static void _account_convert_column_to_capability(account_stmt hstmt, account_capability_s *capability_record)$/;"	f	file:
+_account_convert_column_to_custom	server/src/account-server-db.c	/^static void _account_convert_column_to_custom(account_stmt hstmt, account_custom_s *custom_record)$/;"	f	file:
+_account_create	server/src/account-server-db.c	/^int _account_create(account_h *account)$/;"	f
+_account_create_all_tables	server/src/account-server-db.c	/^static int _account_create_all_tables(void)$/;"	f	file:
+_account_db_close	server/src/account-server-db.c	/^int _account_db_close(void)$/;"	f
+_account_db_data_to_text	server/src/account-server-db.c	/^static void _account_db_data_to_text(const char *textbuf, char **output)$/;"	f	file:
+_account_db_err_code	server/src/account-server-db.c	/^static int _account_db_err_code()$/;"	f	file:
+_account_db_err_code_in_global_db	server/src/account-server-db.c	/^static int _account_db_err_code_in_global_db()$/;"	f	file:
+_account_db_err_msg	server/src/account-server-db.c	/^static const char *_account_db_err_msg()$/;"	f	file:
+_account_db_err_msg_in_global_db	server/src/account-server-db.c	/^static const char *_account_db_err_msg_in_global_db()$/;"	f	file:
+_account_db_handle_close	server/src/account-server-db.c	/^int _account_db_handle_close(sqlite3* hDB)$/;"	f
+_account_db_open	server/src/account-server-db.c	/^int _account_db_open(int mode, int pid, int uid)$/;"	f
+_account_db_query_all	server/src/account-server-db.c	/^GSList* _account_db_query_all(int pid)$/;"	f
+_account_delete	server/src/account-server-db.c	/^int _account_delete(int pid, int uid, int account_id)$/;"	f
+_account_delete_from_db_by_package_name	server/src/account-server-db.c	/^int _account_delete_from_db_by_package_name(int pid, int uid, const char *package_name, gboolean permission)$/;"	f
+_account_delete_from_db_by_user_name	server/src/account-server-db.c	/^int _account_delete_from_db_by_user_name(int pid, int uid, const char *user_name, const char *package_name)$/;"	f
+_account_destroy	server/src/account-server-db.c	/^int _account_destroy(account_h account)$/;"	f
+_account_end_transaction	server/src/account-server-db.c	/^static int _account_end_transaction(bool is_success)$/;"	f	file:
+_account_error_quark	server/src/account-server.c	/^_account_error_quark (void)$/;"	f	file:
+_account_execute_insert_query	server/src/account-server-db.c	/^static int _account_execute_insert_query(account_s *account)$/;"	f	file:
+_account_execute_query	server/src/account-server-db.c	/^static int _account_execute_query(const char *query)$/;"	f	file:
+_account_get_account_id	server/src/account-server-db.c	/^int _account_get_account_id(account_s* account, int *account_id)$/;"	f
+_account_get_capability_list_by_account_id	server/src/account-server-db.c	/^GSList* _account_get_capability_list_by_account_id(int account_id, int *error_code)$/;"	f
+_account_get_capability_text_cb	server/src/account-server-db.c	/^bool _account_get_capability_text_cb(const char* capability_type, account_capability_state_e capability_value, void *user_data)$/;"	f
+_account_get_current_appid	server/src/account-server-db.c	/^static char* _account_get_current_appid(int pid)$/;"	f	file:
+_account_get_current_appid_cb	server/src/account-server-db.c	/^int _account_get_current_appid_cb(const pkgmgrinfo_appinfo_h handle, void *user_data)$/;"	f
+_account_get_custom_text_cb	server/src/account-server-db.c	/^bool _account_get_custom_text_cb(char* key, char* value, void *user_data)$/;"	f
+_account_get_label_text_cb	server/src/account-server-db.c	/^bool _account_get_label_text_cb(char* app_id, char* label, char* locale, void *user_data)$/;"	f
+_account_get_next_sequence	server/src/account-server-db.c	/^static int _account_get_next_sequence(const char *pszName)$/;"	f	file:
+_account_get_package_name_from_account_id	server/src/account-server-db.c	/^static int _account_get_package_name_from_account_id(int account_id, char **package_name)$/;"	f	file:
+_account_get_proc_cmdline_bypid	server/src/account-server-db.c	/^char *_account_get_proc_cmdline_bypid(int pid)$/;"	f
+_account_get_provider_feature_cb	server/src/account-server-db.c	/^bool _account_get_provider_feature_cb(char* app_id, char* key, void* user_data)$/;"	f
+_account_get_record_count	server/src/account-server-db.c	/^static int _account_get_record_count(char* query)$/;"	f	file:
+_account_get_record_count_in_global_db	server/src/account-server-db.c	/^static int _account_get_record_count_in_global_db(const char *query)$/;"	f	file:
+_account_get_text	server/src/account-server-db.c	/^static char *_account_get_text(const char *text_data)$/;"	f	file:
+_account_get_total_count_from_db	server/src/account-server-db.c	/^int _account_get_total_count_from_db(gboolean include_hidden, int *count)$/;"	f
+_account_global_db_close	server/src/account-server-db.c	/^int _account_global_db_close(void)$/;"	f
+_account_global_db_open	server/src/account-server-db.c	/^int _account_global_db_open(void)$/;"	f
+_account_insert_capability	server/src/account-server-db.c	/^static int _account_insert_capability(account_s *account, int account_id)$/;"	f	file:
+_account_insert_custom	server/src/account-server-db.c	/^static int _account_insert_custom(account_s *account, int account_id)$/;"	f	file:
+_account_insert_delete_update_notification_send	server/src/account-server-db.c	/^static void _account_insert_delete_update_notification_send(char *noti_name)$/;"	f	file:
+_account_insert_to_db	server/src/account-server-db.c	/^int _account_insert_to_db(account_s* account, int pid, int uid, int *account_id)$/;"	f
+_account_prepare_query	server/src/account-server-db.c	/^static account_stmt _account_prepare_query(char *query)$/;"	f	file:
+_account_prepare_query_in_global_db	server/src/account-server-db.c	/^static account_stmt _account_prepare_query_in_global_db(char *query)$/;"	f	file:
+_account_query_account_by_account_id	server/src/account-server-db.c	/^int _account_query_account_by_account_id(int pid, int account_db_id, account_s *account_record)$/;"	f
+_account_query_account_by_capability	server/src/account-server-db.c	/^_account_query_account_by_capability(int pid, const char* capability_type, const int capability_value, int *error_code)$/;"	f
+_account_query_account_by_capability_type	server/src/account-server-db.c	/^GList* _account_query_account_by_capability_type(int pid, const char* capability_type, int *error_code)$/;"	f
+_account_query_account_by_package_name	server/src/account-server-db.c	/^GList* _account_query_account_by_package_name(int pid,const char* package_name, int *error_code)$/;"	f
+_account_query_account_by_user_name	server/src/account-server-db.c	/^GList* _account_query_account_by_user_name(int pid, const char *user_name, int *error_code)$/;"	f
+_account_query_account_by_username_and_package	server/src/account-server-db.c	/^static int _account_query_account_by_username_and_package(const char* username, const char* package_name, account_h *account)$/;"	f	file:
+_account_query_bind_int	server/src/account-server-db.c	/^static int _account_query_bind_int(account_stmt pStmt, int pos, int num)$/;"	f	file:
+_account_query_bind_text	server/src/account-server-db.c	/^static int _account_query_bind_text(account_stmt pStmt, int pos, const char *str)$/;"	f	file:
+_account_query_capability_by_account_id	server/src/account-server-db.c	/^int _account_query_capability_by_account_id(capability_cb callback, int account_id, void *user_data )$/;"	f
+_account_query_custom_by_account_id	server/src/account-server-db.c	/^static int _account_query_custom_by_account_id(account_custom_cb callback, int account_id, void *user_data )$/;"	f	file:
+_account_query_finalize	server/src/account-server-db.c	/^static int _account_query_finalize(account_stmt pStmt)$/;"	f	file:
+_account_query_finalize_in_global_db	server/src/account-server-db.c	/^static int _account_query_finalize_in_global_db(account_stmt pStmt)$/;"	f	file:
+_account_query_step	server/src/account-server-db.c	/^static int _account_query_step(account_stmt pStmt)$/;"	f	file:
+_account_query_table_column_int	server/src/account-server-db.c	/^static int _account_query_table_column_int(account_stmt pStmt, int pos)$/;"	f	file:
+_account_query_table_column_text	server/src/account-server-db.c	/^static const char *_account_query_table_column_text(account_stmt pStmt, int pos)$/;"	f	file:
+_account_svc_errors	server/src/account-server.c	/^GDBusErrorEntry _account_svc_errors[] =$/;"	v
+_account_type_check_duplicated	server/src/account-server-db.c	/^static gboolean _account_type_check_duplicated(account_type_s *data)$/;"	f	file:
+_account_type_convert_account_to_sql	server/src/account-server-db.c	/^static int _account_type_convert_account_to_sql(account_type_s *account_type, account_stmt hstmt, char *sql_value)$/;"	f	file:
+_account_type_convert_column_to_account_type	server/src/account-server-db.c	/^static void _account_type_convert_column_to_account_type(account_stmt hstmt, account_type_s *account_type_record)$/;"	f	file:
+_account_type_convert_column_to_label	server/src/account-server-db.c	/^static void _account_type_convert_column_to_label(account_stmt hstmt, label_s *label_record)$/;"	f	file:
+_account_type_convert_column_to_provider_feature	server/src/account-server-db.c	/^static void _account_type_convert_column_to_provider_feature(account_stmt hstmt, provider_feature_s *feature_record)$/;"	f	file:
+_account_type_delete_by_app_id	server/src/account-server-db.c	/^int _account_type_delete_by_app_id(const char* app_id)$/;"	f
+_account_type_execute_insert_query	server/src/account-server-db.c	/^static int _account_type_execute_insert_query(account_type_s *account_type)$/;"	f	file:
+_account_type_get_label_list_by_app_id	server/src/account-server-db.c	/^GSList* _account_type_get_label_list_by_app_id(const char* app_id, int *error_code )$/;"	f
+_account_type_get_label_list_by_app_id_in_global_db	server/src/account-server-db.c	/^GSList* _account_type_get_label_list_by_app_id_in_global_db(const char* app_id, int *error_code )$/;"	f
+_account_type_insert_label	server/src/account-server-db.c	/^static int _account_type_insert_label(account_type_s *account_type)$/;"	f	file:
+_account_type_insert_provider_feature	server/src/account-server-db.c	/^static int _account_type_insert_provider_feature(account_type_s *account_type, const char* app_id)$/;"	f	file:
+_account_type_insert_to_db	server/src/account-server-db.c	/^int _account_type_insert_to_db(account_type_s* account_type, int* account_type_id)$/;"	f
+_account_type_label_get_app_id	server/src/account-server-db.c	/^int _account_type_label_get_app_id(label_h label, char **app_id)$/;"	f
+_account_type_query_all	server/src/account-server-db.c	/^GSList* _account_type_query_all(void)$/;"	f
+_account_type_query_all_in_global_db	server/src/account-server-db.c	/^int _account_type_query_all_in_global_db(GSList **account_type_list_all)$/;"	f
+_account_type_query_app_id_exist	server/src/account-server-db.c	/^int _account_type_query_app_id_exist(const char* app_id)$/;"	f
+_account_type_query_app_id_exist_from_all_db	server/src/account-server-db.c	/^int _account_type_query_app_id_exist_from_all_db(const char *app_id)$/;"	f
+_account_type_query_app_id_exist_in_global_db	server/src/account-server-db.c	/^int _account_type_query_app_id_exist_in_global_db(const char *app_id)$/;"	f
+_account_type_query_by_app_id	server/src/account-server-db.c	/^int _account_type_query_by_app_id(const char* app_id, account_type_s** account_type_record)$/;"	f
+_account_type_query_by_app_id_in_global_db	server/src/account-server-db.c	/^int _account_type_query_by_app_id_in_global_db(const char* app_id, account_type_s** account_type_record)$/;"	f
+_account_type_query_by_provider_feature	server/src/account-server-db.c	/^GSList* _account_type_query_by_provider_feature(const char* key, int *error_code)$/;"	f
+_account_type_query_by_provider_feature_in_global_db	server/src/account-server-db.c	/^int _account_type_query_by_provider_feature_in_global_db(const char* key, GSList **account_type_list_all)$/;"	f
+_account_type_query_label_by_app_id	server/src/account-server-db.c	/^int _account_type_query_label_by_app_id(account_label_cb callback, const char* app_id, void *user_data )$/;"	f
+_account_type_query_label_by_app_id_in_global_db	server/src/account-server-db.c	/^int _account_type_query_label_by_app_id_in_global_db(account_label_cb callback, const char* app_id, void *user_data )$/;"	f
+_account_type_query_label_by_locale	server/src/account-server-db.c	/^int _account_type_query_label_by_locale(const char* app_id, const char* locale, char **label)$/;"	f
+_account_type_query_label_by_locale_in_global_db	server/src/account-server-db.c	/^int _account_type_query_label_by_locale_in_global_db(const char* app_id, const char* locale, char **label)$/;"	f
+_account_type_query_provider_feature_by_app_id	server/src/account-server-db.c	/^GSList* _account_type_query_provider_feature_by_app_id(const char* app_id, int *error_code)$/;"	f
+_account_type_query_provider_feature_by_app_id_in_global_db	server/src/account-server-db.c	/^GSList* _account_type_query_provider_feature_by_app_id_in_global_db(const char* app_id, int *error_code)$/;"	f
+_account_type_query_provider_feature_cb_by_app_id	server/src/account-server-db.c	/^int _account_type_query_provider_feature_cb_by_app_id(provider_feature_cb callback, const char* app_id, void *user_data )$/;"	f
+_account_type_query_provider_feature_cb_by_app_id_in_global_db	server/src/account-server-db.c	/^int _account_type_query_provider_feature_cb_by_app_id_in_global_db(provider_feature_cb callback, const char* app_id, void *user_data )$/;"	f
+_account_type_query_supported_feature	server/src/account-server-db.c	/^bool _account_type_query_supported_feature(const char* app_id, const char* capability, int *error_code)$/;"	f
+_account_type_query_supported_feature_in_global_db	server/src/account-server-db.c	/^bool _account_type_query_supported_feature_in_global_db(const char* app_id, const char* capability, int *error_code)$/;"	f
+_account_type_update_account	server/src/account-server-db.c	/^static int _account_type_update_account(account_type_s *account_type, const char* app_id)$/;"	f	file:
+_account_type_update_label	server/src/account-server-db.c	/^static int _account_type_update_label(account_type_s *account_type, const char* app_id)$/;"	f	file:
+_account_type_update_provider_feature	server/src/account-server-db.c	/^static int _account_type_update_provider_feature(account_type_s *account_type, const char* app_id)$/;"	f	file:
+_account_type_update_to_db_by_app_id	server/src/account-server-db.c	/^int _account_type_update_to_db_by_app_id(account_type_s* account_type, const char* app_id)$/;"	f
+_account_update_account	server/src/account-server-db.c	/^static int _account_update_account(int pid, int uid, account_s *account, int account_id)$/;"	f	file:
+_account_update_account_by_user_name	server/src/account-server-db.c	/^static int _account_update_account_by_user_name(int pid, int uid, account_s *account, const char *user_name, const char *package_name)$/;"	f	file:
+_account_update_account_ex	server/src/account-server-db.c	/^static int _account_update_account_ex(account_s *account, int account_id)$/;"	f	file:
+_account_update_capability	server/src/account-server-db.c	/^static int _account_update_capability(account_s *account, int account_id)$/;"	f	file:
+_account_update_capability_by_user_name	server/src/account-server-db.c	/^static int _account_update_capability_by_user_name(account_s *account, const char *user_name, const char *package_name )$/;"	f	file:
+_account_update_custom	server/src/account-server-db.c	/^static int _account_update_custom(account_s *account, int account_id)$/;"	f	file:
+_account_update_sync_status_by_id	server/src/account-server-db.c	/^int _account_update_sync_status_by_id(int uid, int account_db_id, const int sync_status)$/;"	f
+_account_update_to_db_by_id	server/src/account-server-db.c	/^int _account_update_to_db_by_id(int pid, int uid, account_s* account, int account_id)$/;"	f
+_account_update_to_db_by_id_ex	server/src/account-server-db.c	/^int _account_update_to_db_by_id_ex(account_s* account, int account_id)$/;"	f
+_account_update_to_db_by_user_name	server/src/account-server-db.c	/^int _account_update_to_db_by_user_name(int pid, int uid, account_s* account, const char *user_name, const char *package_name)$/;"	f
+_check_privilege	server/src/account-server.c	/^int _check_privilege(GDBusMethodInvocation *invocation, const char* privilege)$/;"	f
+_check_priviliege_account_read	server/src/account-server.c	/^int _check_priviliege_account_read(GDBusMethodInvocation *invocation)$/;"	f
+_check_priviliege_account_write	server/src/account-server.c	/^int _check_priviliege_account_write(GDBusMethodInvocation *invocation)$/;"	f
+_get_client_pid	server/src/account-server.c	/^_get_client_pid(GDBusMethodInvocation* invoc)$/;"	f	file:
+_initialize	server/src/account-server.c	/^static void _initialize()$/;"	f	file:
+_initialize_dbus	server/src/account-server.c	/^static bool _initialize_dbus()$/;"	f	file:
+_remove_sensitive_info_from_non_owning_account	server/src/account-server-db.c	/^static int _remove_sensitive_info_from_non_owning_account(int caller_pid, account_s *account)$/;"	f	file:
+_remove_sensitive_info_from_non_owning_account_list	server/src/account-server-db.c	/^static int _remove_sensitive_info_from_non_owning_account_list(int caller_pid, GList *account_list)$/;"	f	file:
+_remove_sensitive_info_from_non_owning_account_slist	server/src/account-server-db.c	/^static int _remove_sensitive_info_from_non_owning_account_slist(int caller_pid, GSList *account_list)$/;"	f	file:
+account_global_mutex	server/src/account-server-db.c	/^pthread_mutex_t account_global_mutex = PTHREAD_MUTEX_INITIALIZER;$/;"	v
+account_manager_account_add	server/src/account-server.c	/^gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant* account_data, gint uid, gpointer user_data)$/;"	f
+account_manager_account_delete_from_db_by_id	server/src/account-server.c	/^gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,$/;"	f
+account_manager_account_delete_from_db_by_package_name	server/src/account-server.c	/^gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *object,$/;"	f
+account_manager_account_delete_from_db_by_user_name	server/src/account-server.c	/^gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *object,$/;"	f
+account_manager_account_get_total_count_from_db	server/src/account-server.c	/^gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gboolean include_hidden, gint uid)$/;"	f
+account_manager_account_query_all	server/src/account-server.c	/^gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gint uid)$/;"	f
+account_manager_account_type_add	server/src/account-server.c	/^gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant *account_type_data, gint uid, gpointer user_data)$/;"	f
+account_manager_account_type_query_all	server/src/account-server.c	/^gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gint uid)$/;"	f
+account_manager_account_update_to_db_by_id	server/src/account-server.c	/^gboolean account_manager_account_update_to_db_by_id(AccountManager *object,$/;"	f
+account_manager_handle_account_query_account_by_account_id	server/src/account-server.c	/^gboolean account_manager_handle_account_query_account_by_account_id(AccountManager *object, GDBusMethodInvocation *invocation,$/;"	f
+account_manager_handle_account_query_account_by_capability	server/src/account-server.c	/^account_manager_handle_account_query_account_by_capability(AccountManager *obj,$/;"	f
+account_manager_handle_account_query_account_by_capability_type	server/src/account-server.c	/^account_manager_handle_account_query_account_by_capability_type(AccountManager *obj,$/;"	f
+account_manager_handle_account_query_account_by_package_name	server/src/account-server.c	/^account_manager_handle_account_query_account_by_package_name(AccountManager *obj,$/;"	f
+account_manager_handle_account_query_account_by_user_name	server/src/account-server.c	/^account_manager_handle_account_query_account_by_user_name(AccountManager *obj,$/;"	f
+account_manager_handle_account_query_capability_by_account_id	server/src/account-server.c	/^account_manager_handle_account_query_capability_by_account_id(AccountManager *obj,$/;"	f
+account_manager_handle_account_type_delete_by_app_id	server/src/account-server.c	/^gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *obj,$/;"	f
+account_manager_handle_account_type_query_app_id_exist	server/src/account-server.c	/^gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager *obj,$/;"	f
+account_manager_handle_account_type_query_by_app_id	server/src/account-server.c	/^gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *obj,$/;"	f
+account_manager_handle_account_type_query_by_provider_feature	server/src/account-server.c	/^account_manager_handle_account_type_query_by_provider_feature(AccountManager *obj,$/;"	f
+account_manager_handle_account_type_query_label_by_app_id	server/src/account-server.c	/^gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManager *obj,$/;"	f
+account_manager_handle_account_type_query_label_by_locale	server/src/account-server.c	/^account_manager_handle_account_type_query_label_by_locale(AccountManager *object,$/;"	f
+account_manager_handle_account_type_query_provider_feature_by_app_id	server/src/account-server.c	/^gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(AccountManager *obj,$/;"	f
+account_manager_handle_account_type_query_supported_feature	server/src/account-server.c	/^gboolean account_manager_handle_account_type_query_supported_feature(AccountManager *obj,$/;"	f
+account_manager_handle_account_type_update_to_db_by_app_id	server/src/account-server.c	/^gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountManager *obj,$/;"	f
+account_manager_handle_account_update_sync_status_by_id	server/src/account-server.c	/^gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager *object,$/;"	f
+account_manager_handle_account_update_to_db_by_id_ex	server/src/account-server.c	/^gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *obj,$/;"	f
+account_manager_handle_account_update_to_db_by_user_name	server/src/account-server.c	/^gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager *object,$/;"	f
+account_mgr_server_mgr	server/src/account-server.c	/^GDBusObjectManagerServer *account_mgr_server_mgr = NULL;$/;"	v
+account_mgr_server_obj	server/src/account-server.c	/^static AccountManager* account_mgr_server_obj = NULL;$/;"	v	file:
+account_mutex	server/src/account-server-db.c	/^pthread_mutex_t account_mutex = PTHREAD_MUTEX_INITIALIZER;$/;"	v
+account_stmt	server/src/account-server-db.c	/^typedef sqlite3_stmt* account_stmt;$/;"	t	file:
+account_type_create	server/src/account-server-db.c	/^int account_type_create(account_type_h *account_type)$/;"	f
+account_type_destroy	server/src/account-server-db.c	/^int account_type_destroy(account_type_h account_type)$/;"	f
+account_type_get_app_id	server/src/account-server-db.c	/^int account_type_get_app_id(account_type_h account_type, char **app_id)$/;"	f
+account_type_get_icon_path	server/src/account-server-db.c	/^int account_type_get_icon_path(account_type_h account_type, char **icon_path)$/;"	f
+account_type_get_label	server/src/account-server-db.c	/^int account_type_get_label(account_type_h account_type, account_label_cb callback, void *user_data)$/;"	f
+account_type_get_label_by_locale	server/src/account-server-db.c	/^int account_type_get_label_by_locale(account_type_h account_type, const char* locale, char** label)$/;"	f
+account_type_get_multiple_account_support	server/src/account-server-db.c	/^int account_type_get_multiple_account_support(account_type_h account_type, int *multiple_account_support)$/;"	f
+account_type_get_service_provider_id	server/src/account-server-db.c	/^int account_type_get_service_provider_id(account_type_h account_type, char **service_provider_id)$/;"	f
+account_type_get_small_icon_path	server/src/account-server-db.c	/^int account_type_get_small_icon_path(account_type_h account_type, char **small_icon_path)$/;"	f
+account_type_query_label_by_app_id	server/src/account-server-db.c	/^int account_type_query_label_by_app_id(account_label_cb callback, const char* app_id, void *user_data )$/;"	f
+account_type_query_provider_feature_cb_by_app_id	server/src/account-server-db.c	/^int account_type_query_provider_feature_cb_by_app_id(provider_feature_cb callback, const char* app_id, void *user_data )$/;"	f
+account_type_set_app_id	server/src/account-server-db.c	/^int account_type_set_app_id(account_type_h account_type, const char *app_id)$/;"	f
+account_type_set_icon_path	server/src/account-server-db.c	/^int account_type_set_icon_path(account_type_h account_type, const char *icon_path)$/;"	f
+account_type_set_label	server/src/account-server-db.c	/^int account_type_set_label(account_type_h account_type, const char* label, const char* locale)$/;"	f
+account_type_set_multiple_account_support	server/src/account-server-db.c	/^int account_type_set_multiple_account_support(account_type_h account_type, const bool multiple_account_support)$/;"	f
+account_type_set_service_provider_id	server/src/account-server-db.c	/^int account_type_set_service_provider_id(account_type_h account_type, const char *service_provider_id)$/;"	f
+account_type_set_small_icon_path	server/src/account-server-db.c	/^int account_type_set_small_icon_path(account_type_h account_type, const char *small_icon_path)$/;"	f
+g_hAccountDB	server/src/account-server-db.c	/^static sqlite3* g_hAccountDB = NULL;$/;"	v	file:
+g_hAccountDB2	server/src/account-server-db.c	/^static sqlite3* g_hAccountDB2 = NULL;$/;"	v	file:
+g_hAccountGlobalDB	server/src/account-server-db.c	/^static sqlite3* g_hAccountGlobalDB = NULL;$/;"	v	file:
+g_hAccountGlobalDB2	server/src/account-server-db.c	/^static sqlite3* g_hAccountGlobalDB2 = NULL;$/;"	v	file:
+main	server/src/account-server.c	/^int main()$/;"	f
+on_bus_acquired	server/src/account-server.c	/^on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer user_data)$/;"	f	file:
+on_name_acquired	server/src/account-server.c	/^on_name_acquired (GDBusConnection *connection,$/;"	f	file:
+on_name_lost	server/src/account-server.c	/^on_name_lost (GDBusConnection *connection,$/;"	f	file:
+owner_id	server/src/account-server.c	/^static guint owner_id = 0;$/;"	v	file:
+p_cynara	server/src/account-server.c	/^static cynara *p_cynara;$/;"	v	file:
