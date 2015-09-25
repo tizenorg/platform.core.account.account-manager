@@ -262,10 +262,18 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -309,12 +317,19 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_free_account_with_items(account);
 
 	return true;
 }
 
-gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation)
+gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gint uid)
 {
 	_INFO("account_manager_account_query_all start");
 
@@ -330,10 +345,18 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -377,10 +400,17 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
-gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation)
+gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gint uid)
 {
 	_INFO("account_manager_account_query_all start");
 
@@ -395,10 +425,18 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -442,10 +480,17 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
-gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant *account_type_data, gpointer user_data)
+gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant *account_type_data, gint uid, gpointer user_data)
 {
 	int db_id = -1;
 	account_type_s* account_type = NULL;
@@ -468,10 +513,18 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -514,6 +567,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_type_free_account_type_with_items(account_type);
 	return true;
 }
@@ -541,10 +601,18 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -580,6 +648,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
@@ -607,10 +682,18 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -646,6 +729,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
@@ -676,10 +766,18 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 		}
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
+
 		goto RETURN;
 	}
 
@@ -714,6 +812,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
@@ -742,10 +847,18 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -789,6 +902,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_free_account_with_items(account);
 
 	return true;
@@ -820,10 +940,18 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -867,6 +995,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_free_account_with_items(account);
 
 	return true;
@@ -876,7 +1011,8 @@ gboolean
 account_manager_handle_account_type_query_label_by_locale(AccountManager *object,
 															GDBusMethodInvocation *invocation,
 															const gchar *app_id,
-															const gchar *locale)
+															const gchar *locale,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_locale start");
 	guint pid = _get_client_pid(invocation);
@@ -890,10 +1026,18 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -929,13 +1073,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean
 account_manager_handle_account_type_query_by_provider_feature(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															const gchar *key)
+															const gchar *key,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_by_provider_feature start");
 	GVariant* account_type_list_variant = NULL;
@@ -951,10 +1103,18 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1008,10 +1168,17 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
-gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gboolean include_hidden)
+gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gboolean include_hidden, gint uid)
 {
 	_INFO("account_manager_account_get_total_count_from_db start");
 	guint pid = _get_client_pid(invocation);
@@ -1025,10 +1192,18 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1065,11 +1240,18 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_query_account_by_account_id(AccountManager *object, GDBusMethodInvocation *invocation,
-		gint account_db_id)
+		gint account_db_id, gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_account_id start");
 	GVariant* account_variant = NULL;
@@ -1086,10 +1268,18 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1136,6 +1326,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_free_account_with_items(account_data);
 
 	return true;
@@ -1144,7 +1341,8 @@ RETURN:
 gboolean
 account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  const gchar *user_name)
+														  const gchar *user_name,
+														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_user_name start");
 
@@ -1160,10 +1358,18 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1212,13 +1418,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean
 account_manager_handle_account_query_account_by_package_name(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  const gchar *package_name)
+														  const gchar *package_name,
+														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_package_name start");
 
@@ -1234,10 +1448,18 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1286,6 +1508,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
@@ -1293,7 +1522,8 @@ gboolean
 account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
 														  const gchar *capability_type,
-														  gint capability_value)
+														  gint capability_value,
+														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability start");
 
@@ -1310,10 +1540,18 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1363,13 +1601,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean
 account_manager_handle_account_query_account_by_capability_type(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  const gchar *capability_type)
+														  const gchar *capability_type,
+														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability_type start");
 
@@ -1386,10 +1632,18 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1439,13 +1693,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean
 account_manager_handle_account_query_capability_by_account_id(AccountManager *obj,
 														  GDBusMethodInvocation *invocation,
-														  const int account_id)
+														  const int account_id,
+														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_capability_by_account_id start");
 
@@ -1462,10 +1724,18 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1515,6 +1785,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
@@ -1542,10 +1819,18 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1581,12 +1866,20 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															const gchar* app_id)
+															const gchar* app_id,
+															gint uid)
 {
 	GSList* feature_record_list = NULL;
 	GVariant* feature_record_list_variant = NULL;
@@ -1604,10 +1897,18 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1652,13 +1953,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_type_query_supported_feature(AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															const gchar* app_id,
-															const gchar* capability)
+															const gchar* capability,
+															gint uid)
 {
 	int is_supported = 0;
 
@@ -1674,10 +1983,18 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1712,13 +2029,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															GVariant *account_type_variant,
-															const gchar *app_id)
+															const gchar *app_id,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_update_to_db_by_app_id start");
 	account_type_s* account_type = NULL;
@@ -1740,10 +2065,18 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1780,6 +2113,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_type_free_account_type_with_items(account_type);
 
 	return true;
@@ -1787,7 +2127,8 @@ RETURN:
 
 gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															const gchar *app_id)
+															const gchar *app_id,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_delete_by_app_id start");
 
@@ -1808,10 +2149,18 @@ gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *o
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1846,12 +2195,20 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															const gchar *app_id)
+															const gchar *app_id,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_app_id start");
 	GSList* label_list = NULL;
@@ -1868,10 +2225,18 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1908,12 +2273,20 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															const gchar *app_id)
+															const gchar *app_id,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_by_app_id start");
 	GVariant* account_type_variant = NULL;
@@ -1929,10 +2302,18 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -1977,6 +2358,13 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	_account_type_free_account_type_with_items(account_type);
 
 	return true;
@@ -1984,7 +2372,8 @@ RETURN:
 
 gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
-															const gchar *app_id)
+															const gchar *app_id,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_app_id_exist start");
 	guint pid = _get_client_pid(invocation);
@@ -1998,7 +2387,7 @@ gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager 
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(0, pid);
+	return_code = _account_db_open(0, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
@@ -2006,13 +2395,21 @@ gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager 
 		goto RETURN;
 	}
 
-	_INFO("before _account_type_query_app_id_exist");
-	return_code = _account_type_query_app_id_exist (app_id);
-	_INFO("after _account_type_query_app_id_exist=[%d]", return_code);
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	_INFO("before _account_type_query_app_id_exist_from_all_db");
+	return_code = _account_type_query_app_id_exist_from_all_db (app_id);
+	_INFO("after _account_type_query_app_id_exist_from_all_db=[%d]", return_code);
 
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_type_query_app_id_exist = [%d]", return_code);
+		_ERR("_account_type_query_app_id_exist_from_all_db = [%d]", return_code);
 		goto RETURN;
 	}
 
@@ -2037,13 +2434,21 @@ RETURN:
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
 	return true;
 }
 
 gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *obj,
 															GDBusMethodInvocation *invocation,
 															GVariant *account_data,
-															gint account_id)
+															gint account_id,
+															gint uid)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_id_ex start");
 	account_s* account = NULL;
@@ -2064,10 +2469,18 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 		goto RETURN;
 	}
 
-	return_code = _account_db_open(1, pid);
+	return_code = _account_db_open(1, pid, uid);
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
+
+		goto RETURN;
+	}
+
+	return_code = _account_global_db_open();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
@@ -2108,6 +2521,13 @@ RETURN:
 	if (return_code != ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
+		return_code = ACCOUNT_ERROR_NONE;
+	}
+
+	return_code = _account_global_db_close();
+	if (return_code != ACCOUNT_ERROR_NONE)
+	{
+		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
 		return_code = ACCOUNT_ERROR_NONE;
 	}
 

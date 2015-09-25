@@ -1,7 +1,7 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.0.8
+Version:    0.1.0
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0
@@ -98,8 +98,8 @@ fi
 #chmod 600 %{TZ_SYS_DB}/.account.db-journal
 
 #smack labeling
-#chsmack -a 'System' %{TZ_SYS_DB}/.account.db-journal
-#chsmack -a 'System' %{TZ_SYS_DB}/.account.db
+#chsmack -a 'System::Shared' %{TZ_SYS_DB}/.account.db-journal
+#chsmack -a 'System::Shared' %{TZ_SYS_DB}/.account.db
 %postun -p /sbin/ldconfig
 
 
