@@ -39,6 +39,8 @@
 #include <account.h>
 #include <account-error.h>
 #include "account-server-db.h"
+#include "account-key-handler.h"
+#include "account-crypto-service.h"
 
 typedef sqlite3_stmt* account_stmt;
 
@@ -61,6 +63,8 @@ typedef sqlite3_stmt* account_stmt;
 
 #define EASYSIGNUP_CMDLINE	"/usr/bin/esu-agent"
 #define EASYSIGNUP_APPID	"com.samsung.esu-agent"
+
+#define ACCESS_TOKEN_ALIAS	"access_token"
 
 #define ACCOUNT_DB_OPEN_READONLY 0
 #define ACCOUNT_DB_OPEN_READWRITE 1
@@ -692,6 +696,111 @@ static int _account_check_appid_group_with_package_name(int uid, const char* app
 	return error_code;
 }
 
+static int __encrypt_data(unsigned char *data, const int data_len, char **pp_encrypted_data)
+{
+	int ret;
+	int enc_data_len = 0;
+	int key_len = 0;
+	const char *alias = ACCESS_TOKEN_ALIAS;
+	unsigned char *key = NULL;
+
+	_INFO("before account_key_handler_get_account_dek");
+
+	ret = account_key_handler_get_account_dek(alias, &key, &key_len);
+	if (ret != ACCOUNT_ERROR_NONE) {
+		//To Do : fail
+		_ERR("account_key_handler_get_account_dek failed");
+	}
+	_INFO("after account_key_handler_get_account_dek");
+
+	_INFO("before _encrypt_aes_cbc");
+
+	ret = encrypt_aes_cbc(key, key_len, data, data_len, pp_encrypted_data, &enc_data_len);
+	if (ret != ACCOUNT_ERROR_NONE) {
+		//To Do : fail
+		_ERR("encrypt_aes_cbc failed");
+	}
+
+	_INFO("after encrypt_aes_cbc");
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+
+static int _encrypt_access_token(account_s *account)
+{
+	int ret = -1;
+	char *encrypted_token = NULL;
+
+	if (account->access_token) {
+		_INFO("before __encrypt_data");
+		ret = __encrypt_data((unsigned char *)(account->access_token), strlen(account->access_token), &encrypted_token);
+		_INFO("after _encrypt_data, ret=[%d]", ret);
+		free(account->access_token);
+		account->access_token = NULL;
+		if( ret == ACCOUNT_ERROR_NONE) {
+			account->access_token = encrypted_token;
+			_INFO("after access_token, encrypted_token size=[%d]", strlen(account->access_token));
+		}
+		else {
+			//To Do : fail
+			_ERR("_encrypt_data fail");
+			return ret;
+		}
+	}
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+
+static int __decrypt_data(unsigned char *data, const int data_len, char **pp_decrypted_data)
+{
+	int ret;
+	int dec_data_len = 0;
+	int key_len = 0;
+	const char *alias = ACCESS_TOKEN_ALIAS;
+	unsigned char *key = NULL;
+
+	_INFO("before account_key_handler_get_account_dek");
+	ret = account_key_handler_get_account_dek(alias, &key, &key_len);
+	if (ret != ACCOUNT_ERROR_NONE) {
+		//To Do : fail
+		_ERR("account_key_handler_get_account_dek failed");
+	}
+
+	_INFO("before _decrypt_aes_cbc");
+	decrypt_aes_cbc(key, key_len, data, data_len, pp_decrypted_data, &dec_data_len);
+	if (ret != ACCOUNT_ERROR_NONE) {
+		//To Do : fail
+		_ERR("decrypt_aes_cbc failed");
+	}
+	_INFO("after decrypt_aes_cbc, dec_data = %s", *pp_decrypted_data);
+
+	return ACCOUNT_ERROR_NONE;
+}
+
+static int _decrypt_access_token(account_s *account)
+{
+	int ret = -1;
+	char *decrypted_token = NULL;
+
+	if (account->access_token) {
+		ret = __decrypt_data((unsigned char *)account->access_token, strlen(account->access_token), &decrypted_token);
+		free(account->access_token);
+		account->access_token = NULL;
+		if( ret == ACCOUNT_ERROR_NONE)
+			account->access_token = decrypted_token;
+		else {
+			//To Do : fail
+			_ERR("_decrypt_access_token fail");
+			return ret;
+		}
+	}
+	_INFO("_decrypt_access_token end");
+
+	return ACCOUNT_ERROR_NONE;
+}
+
 static int _remove_sensitive_info_from_non_owning_account(int caller_pid, account_s *account)
 {
 	if (account == NULL)
@@ -716,6 +825,13 @@ static int _remove_sensitive_info_from_non_owning_account(int caller_pid, accoun
 			free (account->access_token);
 			account->access_token = NULL;
 
+		} else {
+			int ret = _decrypt_access_token(account);
+			if (ret != ACCOUNT_ERROR_NONE)
+			{
+				_ERR("_decrypt_access_token error");
+				return ret;
+			}
 		}
 		_ACCOUNT_FREE(caller_package_name);
 		return ACCOUNT_ERROR_NONE;
@@ -2076,6 +2192,13 @@ static int _account_update_account_by_user_name(int pid, int uid, account_s *acc
 		return ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 
+	error_code = _encrypt_access_token(account);
+	if (error_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_encrypt_access_token error");
+		return error_code;
+	}
+
 	_account_compare_old_record_by_user_name(account, user_name, package_name);
 
 	if( _account_db_err_code() == SQLITE_PERM ){
@@ -2247,6 +2370,13 @@ int _account_insert_to_db(account_s* account, int pid, int uid, int *account_id)
 		ACCOUNT_ERROR("No more account cannot be added, transaction ret (%x)!!!!\n", ret_transaction);
 		pthread_mutex_unlock(&account_mutex);
 		return ACCOUNT_ERROR_NOT_ALLOW_MULTIPLE;
+	}
+
+	error_code = _encrypt_access_token(data);
+	if (error_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_encrypt_access_token error");
+		return error_code;
 	}
 
 	error_code = _account_execute_insert_query(data);
@@ -2662,6 +2792,13 @@ static int _account_update_account(int pid, int uid, account_s *account, int acc
 		return ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 
+	error_code = _encrypt_access_token(account);
+	if (error_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_encrypt_access_token error");
+		return error_code;
+	}
+
 	error_code = _account_compare_old_record(account, account_id);
 	if (error_code != ACCOUNT_ERROR_NONE) {
 		ACCOUNT_ERROR("_account_compare_old_record fail\n");
@@ -2762,6 +2899,13 @@ static int _account_update_account_ex(account_s *account, int account_id)
 	if (!account->package_name) {
 		ACCOUNT_ERROR("Package name is mandetory field, it can not be NULL!!!!\n");
 		return ACCOUNT_ERROR_INVALID_PARAMETER;
+	}
+
+	error_code = _encrypt_access_token(account);
+	if (error_code != ACCOUNT_ERROR_NONE)
+	{
+		_ERR("_encrypt_access_token error");
+		return error_code;
 	}
 
 	error_code = _account_compare_old_record(account, account_id);

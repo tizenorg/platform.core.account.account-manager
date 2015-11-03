@@ -13,6 +13,8 @@ pkg_check_modules(pkgs REQUIRED
 		cynara-client
 		cynara-session
 		cynara-creds-gdbus
+		openssl
+		key-manager
 		account-common
 		accounts-svc
 		libtzplatform-config
@@ -25,6 +27,8 @@ ENDFOREACH(flag)
 SET(SERVER_SRCS
 	src/account-server.c
 	src/account-server-db.c
+	src/account-key-handler.c
+	src/account-crypto-service.c
 )
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/server/include)
