@@ -170,15 +170,15 @@ char *_account_get_proc_cmdline_bypid(int pid)
 }
 
 
-static char* _account_get_current_appid(int pid)
+static char* _account_get_current_appid(int pid, uid_t uid)
 {
-	_INFO("getting caller appid with pid=[%d]", pid);
+	_INFO("getting caller appid with pid=[%d], uid=[%d]", pid, uid);
 
 	int ret=0;
 	char appid[128]={0,};
 	char* appid_ret = NULL;
 
-	ret = aul_app_get_appid_bypid(pid, appid, sizeof(appid));
+	ret = aul_app_get_appid_bypid_for_uid(pid, appid, sizeof(appid), uid);
 
 	if(ret < 0){
 		ACCOUNT_ERROR("fail to get current appid ret=[%d], appid=%s\n", ret, appid);
@@ -489,7 +489,7 @@ int _account_global_db_close(void)
 	return ret;
 }
 
-static int _account_check_account_type_with_appid_group(int uid, const char* appid, char** verified_appid)
+static int _account_check_account_type_with_appid_group(uid_t uid, const char* appid, char** verified_appid)
 {
 	int error_code = ACCOUNT_ERROR_NOT_REGISTERED_PROVIDER;
 	pkgmgrinfo_appinfo_h ahandle=NULL;
@@ -596,7 +596,7 @@ static int _account_check_account_type_with_appid_group(int uid, const char* app
 	return error_code;
 }
 
-static int _account_check_appid_group_with_package_name(int uid, const char* appid, char* package_name)
+static int _account_check_appid_group_with_package_name(uid_t uid, const char* appid, char* package_name)
 {
 	int error_code = ACCOUNT_ERROR_PERMISSION_DENIED;
 	pkgmgrinfo_appinfo_h ahandle=NULL;
@@ -801,7 +801,7 @@ static int _decrypt_access_token(account_s *account)
 	return ACCOUNT_ERROR_NONE;
 }
 
-static int _remove_sensitive_info_from_non_owning_account(int caller_pid, account_s *account)
+static int _remove_sensitive_info_from_non_owning_account(int caller_pid, uid_t uid, account_s *account)
 {
 	if (account == NULL)
 	{
@@ -811,7 +811,7 @@ static int _remove_sensitive_info_from_non_owning_account(int caller_pid, accoun
 
 	if (account->package_name)
 	{
-		char *caller_package_name = _account_get_current_appid(caller_pid);
+		char *caller_package_name = _account_get_current_appid(caller_pid, uid);
 		if (caller_package_name == NULL)
 		{
 			_ERR("Could not get caller app id, so removing sensitive info from account id [%d]", account->id);
@@ -839,7 +839,7 @@ static int _remove_sensitive_info_from_non_owning_account(int caller_pid, accoun
 	return ACCOUNT_ERROR_INVALID_PARAMETER;
 }
 
-static int _remove_sensitive_info_from_non_owning_account_list(int caller_pid, GList *account_list)
+static int _remove_sensitive_info_from_non_owning_account_list(int caller_pid, uid_t uid, GList *account_list)
 {
 	int return_code = ACCOUNT_ERROR_NONE;
 
@@ -853,14 +853,14 @@ static int _remove_sensitive_info_from_non_owning_account_list(int caller_pid, G
 	for (list_iter = account_list; list_iter != NULL; list_iter = g_list_next(list_iter))
 	{
 		account_s *account = (account_s *) list_iter->data;
-		int ret = _remove_sensitive_info_from_non_owning_account(caller_pid, account);
+		int ret = _remove_sensitive_info_from_non_owning_account(caller_pid, uid, account);
 		if( ret != ACCOUNT_ERROR_NONE)
 			return_code = ret;
 	}
 	return return_code;
 }
 
-static int _remove_sensitive_info_from_non_owning_account_slist(int caller_pid, GSList *account_list)
+static int _remove_sensitive_info_from_non_owning_account_slist(int caller_pid, uid_t uid, GSList *account_list)
 {
 	int return_code = ACCOUNT_ERROR_NONE;
 
@@ -874,7 +874,7 @@ static int _remove_sensitive_info_from_non_owning_account_slist(int caller_pid, 
 	for (list_iter = account_list; list_iter != NULL; list_iter = g_slist_next(list_iter))
 	{
 		account_s *account = (account_s *) list_iter->data;
-		int ret = _remove_sensitive_info_from_non_owning_account(caller_pid, account);
+		int ret = _remove_sensitive_info_from_non_owning_account(caller_pid, uid, account);
 		if( ret != ACCOUNT_ERROR_NONE)
 			return_code = ret;
 	}
@@ -1161,7 +1161,7 @@ int _account_db_handle_close(sqlite3* hDB)
 	return ret;
 }
 
-int _account_db_open(int mode, int pid, int uid)
+int _account_db_open(int mode, int pid, uid_t uid)
 {
 	int  rc = 0;
 	int ret = -1;
@@ -1273,7 +1273,7 @@ static int _account_check_duplicated(account_s *data, const char* verified_appid
 	//1. check user_name
 	//2. check display_name
 	//3. check email_address
-	GList* account_list_temp = _account_query_account_by_package_name(getpid(), verified_appid, &ret);
+	GList* account_list_temp = _account_query_account_by_package_name(getpid(), OWNER_ROOT, verified_appid, &ret);
 	if (account_list_temp == NULL)
 	{
 		_ERR("_account_query_account_by_package_name returned NULL");
@@ -2168,7 +2168,7 @@ CATCH:
 
 
 
-static int _account_update_account_by_user_name(int pid, int uid, account_s *account, const char *user_name, const char *package_name)
+static int _account_update_account_by_user_name(int pid, uid_t uid, account_s *account, const char *user_name, const char *package_name)
 {
 	int				rc = 0, binding_count = 0, count = 0;
 	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
@@ -2181,7 +2181,7 @@ static int _account_update_account_by_user_name(int pid, int uid, account_s *acc
 	char* current_appid = NULL;
 	char* verified_appid = NULL;
 
-	current_appid = _account_get_current_appid(pid);
+	current_appid = _account_get_current_appid(pid, uid);
 	error_code = _account_check_account_type_with_appid_group(uid, current_appid, &verified_appid);
 
 	_ACCOUNT_FREE(current_appid);
@@ -2269,7 +2269,7 @@ static int _account_update_account_by_user_name(int pid, int uid, account_s *acc
 	return error_code;
 }
 
-int _account_insert_to_db(account_s* account, int pid, int uid, int *account_id)
+int _account_insert_to_db(account_s* account, int pid, uid_t uid, int *account_id)
 {
 	_INFO("");
 	int		error_code = ACCOUNT_ERROR_NONE;
@@ -2312,7 +2312,7 @@ int _account_insert_to_db(account_s* account, int pid, int uid, int *account_id)
 	data->id = *account_id;
 
 	char* appid = NULL;
-	appid = _account_get_current_appid(pid);
+	appid = _account_get_current_appid(pid, uid);
 
 	if(!appid)
 	{
@@ -2755,7 +2755,7 @@ static int _account_get_package_name_from_account_id(int account_id, char **pack
 
 }
 
-static int _account_update_account(int pid, int uid, account_s *account, int account_id)
+static int _account_update_account(int pid, uid_t uid, account_s *account, int account_id)
 {
 	int				rc = 0, binding_count =0;
 	char			query[ACCOUNT_SQL_LEN_MAX] = {0, };
@@ -2771,7 +2771,7 @@ static int _account_update_account(int pid, int uid, account_s *account, int acc
 	char* current_appid = NULL;
 	char *package_name = NULL;
 
-	current_appid = _account_get_current_appid(pid);
+	current_appid = _account_get_current_appid(pid, uid);
 	error_code = _account_get_package_name_from_account_id(account_id, &package_name);
 
 	if(error_code != ACCOUNT_ERROR_NONE || package_name == NULL){
@@ -3002,7 +3002,7 @@ static int _account_update_account_ex(account_s *account, int account_id)
 }
 
 
-int _account_update_to_db_by_id(int pid, int uid, account_s* account, int account_id)
+int _account_update_to_db_by_id(int pid, uid_t uid, account_s* account, int account_id)
 {
 	ACCOUNT_RETURN_VAL((account != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("DATA IS NULL"));
 	ACCOUNT_RETURN_VAL((account_id > 0), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("Account id is not valid"));
@@ -3057,7 +3057,7 @@ int _account_update_to_db_by_id_ex(account_s* account, int account_id)
 }
 
 
-int _account_update_to_db_by_user_name(int pid, int uid, account_s* account, const char *user_name, const char *package_name)
+int _account_update_to_db_by_user_name(int pid, uid_t uid, account_s* account, const char *user_name, const char *package_name)
 {
 	ACCOUNT_RETURN_VAL((user_name != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("USER NAME IS NULL"));
 	ACCOUNT_RETURN_VAL((package_name != NULL), {}, ACCOUNT_ERROR_INVALID_PARAMETER, ("PACKAGE NAME IS NULL"));
@@ -3079,7 +3079,7 @@ int _account_update_to_db_by_user_name(int pid, int uid, account_s* account, con
 	return error_code;
 }
 
-GSList* _account_db_query_all(int pid)
+GSList* _account_db_query_all(int pid, uid_t uid)
 {
 	//int 			error_code = ACCOUNT_ERROR_NONE;
 	account_stmt	hstmt = NULL;
@@ -3144,12 +3144,12 @@ CATCH:
 	}
 	if (account_list)
 	{
-		_remove_sensitive_info_from_non_owning_account_slist(pid, account_list);
+		_remove_sensitive_info_from_non_owning_account_slist(pid, uid, account_list);
 	}
 	return account_list;
 }
 
-int _account_update_sync_status_by_id(int uid, int account_db_id, const int sync_status)
+int _account_update_sync_status_by_id(uid_t uid, int account_db_id, const int sync_status)
 {
 	int				error_code = ACCOUNT_ERROR_NONE;
 	account_stmt 	hstmt = NULL;
@@ -3227,7 +3227,7 @@ CATCH:
 	return error_code;
 }
 
-int _account_query_account_by_account_id(int pid, int account_db_id, account_s *account_record)
+int _account_query_account_by_account_id(int pid, uid_t uid, int account_db_id, account_s *account_record)
 {
 	_INFO("_account_query_account_by_account_id() start, account_db_id=[%d]", account_db_id);
 
@@ -3292,14 +3292,14 @@ CATCH:
 
 	if (account_record)
 	{
-		_remove_sensitive_info_from_non_owning_account(pid, account_record);
+		_remove_sensitive_info_from_non_owning_account(pid, uid, account_record);
 	}
 	pthread_mutex_unlock(&account_mutex);
 	ACCOUNT_DEBUG("_account_query_account_by_account_id end [%d]", error_code);
 	return error_code;
 }
 
-GList* _account_query_account_by_user_name(int pid, const char *user_name, int *error_code)
+GList* _account_query_account_by_user_name(int pid, uid_t uid, const char *user_name, int *error_code)
 {
 	*error_code = ACCOUNT_ERROR_NONE;
 	account_stmt 	hstmt = NULL;
@@ -3422,7 +3422,7 @@ CATCH:
 	pthread_mutex_unlock(&account_mutex);
 	if (account_head)
 	{
-		_remove_sensitive_info_from_non_owning_account_list(pid, account_head->account_list);
+		_remove_sensitive_info_from_non_owning_account_list(pid, uid, account_head->account_list);
 		GList* result = account_head->account_list;
 		_ACCOUNT_FREE(account_head);
 		return result;
@@ -3431,7 +3431,7 @@ CATCH:
 }
 
 GList*
-_account_query_account_by_capability(int pid, const char* capability_type, const int capability_value, int *error_code)
+_account_query_account_by_capability(int pid, uid_t uid, const char* capability_type, const int capability_value, int *error_code)
 {
 	*error_code = ACCOUNT_ERROR_NONE;
 	account_stmt	hstmt = NULL;
@@ -3546,7 +3546,7 @@ CATCH:
 
 	if (account_head)
 	{
-		_remove_sensitive_info_from_non_owning_account_list(pid, account_head->account_list);
+		_remove_sensitive_info_from_non_owning_account_list(pid, uid, account_head->account_list);
 		GList* result = account_head->account_list;
 		_ACCOUNT_FREE(account_head);
 		return result;
@@ -3554,7 +3554,7 @@ CATCH:
 	return NULL;
 }
 
-GList* _account_query_account_by_capability_type(int pid, const char* capability_type, int *error_code)
+GList* _account_query_account_by_capability_type(int pid, uid_t uid, const char* capability_type, int *error_code)
 {
 	*error_code = ACCOUNT_ERROR_NONE;
 	account_stmt	hstmt = NULL;
@@ -3660,7 +3660,7 @@ CATCH:
 
 	if (account_head)
 	{
-		_remove_sensitive_info_from_non_owning_account_list(pid, account_head->account_list);
+		_remove_sensitive_info_from_non_owning_account_list(pid, uid, account_head->account_list);
 		GList* result = account_head->account_list;
 		_ACCOUNT_FREE(account_head);
 		return result;
@@ -3668,7 +3668,7 @@ CATCH:
 	return NULL;
 }
 
-GList* _account_query_account_by_package_name(int pid,const char* package_name, int *error_code)
+GList* _account_query_account_by_package_name(int pid, uid_t uid, const char* package_name, int *error_code)
 {
 	_INFO("_account_query_account_by_package_name");
 
@@ -3775,7 +3775,7 @@ CATCH:
 	if ((*error_code == ACCOUNT_ERROR_NONE) && account_head != NULL)
 	{
 		_INFO("Returning account_list");
-		_remove_sensitive_info_from_non_owning_account_list(pid,account_head->account_list);
+		_remove_sensitive_info_from_non_owning_account_list(pid, uid, account_head->account_list);
 		GList* result = account_head->account_list;
 		_ACCOUNT_FREE(account_head);
 		return result;
@@ -3783,7 +3783,7 @@ CATCH:
 	return NULL;
 }
 
-int _account_delete(int pid, int uid, int account_id)
+int _account_delete(int pid, uid_t uid, int account_id)
 {
 	int				error_code = ACCOUNT_ERROR_NONE;
 	account_stmt 	hstmt = NULL;
@@ -3815,7 +3815,7 @@ int _account_delete(int pid, int uid, int account_id)
 	char* current_appid = NULL;
 	char *package_name = NULL;
 
-	current_appid = _account_get_current_appid(pid);
+	current_appid = _account_get_current_appid(pid, uid);
 
 	error_code = _account_get_package_name_from_account_id(account_id, &package_name);
 
@@ -4051,7 +4051,7 @@ int _account_get_account_id(account_s* account, int *account_id)
 	return ACCOUNT_ERROR_NONE;
 }
 
-int _account_delete_from_db_by_user_name(int pid, int uid, const char *user_name, const char *package_name)
+int _account_delete_from_db_by_user_name(int pid, uid_t uid, const char *user_name, const char *package_name)
 {
 	_INFO("[%s][%s]", user_name, package_name);
 
@@ -4073,7 +4073,7 @@ int _account_delete_from_db_by_user_name(int pid, int uid, const char *user_name
 	char* current_appid = NULL;
 	char* package_name_temp = NULL;
 
-	current_appid = _account_get_current_appid(pid);
+	current_appid = _account_get_current_appid(pid, uid);
 
 	package_name_temp = _account_get_text(package_name);
 
@@ -4222,7 +4222,7 @@ CATCH:
 	return error_code;
 }
 
-int _account_delete_from_db_by_package_name(int pid, int uid, const char *package_name, gboolean permission)
+int _account_delete_from_db_by_package_name(int pid, uid_t uid, const char *package_name, gboolean permission)
 {
 	_INFO("_account_delete_from_db_by_package_name");
 	int 			error_code = ACCOUNT_ERROR_NONE;
@@ -4239,7 +4239,7 @@ int _account_delete_from_db_by_package_name(int pid, int uid, const char *packag
 	ACCOUNT_RETURN_VAL((g_hAccountDB != NULL), {}, ACCOUNT_ERROR_DB_NOT_OPENED, ("The database isn't connected."));
 
 	// It only needs list of ids, does not need to query sensitive info. So sending 0
-	GList* account_list_temp = _account_query_account_by_package_name(getpid(), package_name, &ret);
+	GList* account_list_temp = _account_query_account_by_package_name(getpid(), OWNER_ROOT, package_name, &ret);
 	if( _account_db_err_code() == SQLITE_PERM ){
 		ACCOUNT_ERROR( "Access failed(%s)", _account_db_err_msg());
 		return ACCOUNT_ERROR_PERMISSION_DENIED;
@@ -4255,7 +4255,7 @@ int _account_delete_from_db_by_package_name(int pid, int uid, const char *packag
 		char* current_appid = NULL;
 		char* package_name_temp = NULL;
 
-		current_appid = _account_get_current_appid(pid);
+		current_appid = _account_get_current_appid(pid, uid);
 
 		package_name_temp = _account_get_text(package_name);
 

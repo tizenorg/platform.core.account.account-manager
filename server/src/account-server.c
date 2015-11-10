@@ -364,7 +364,7 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 	//Mode checking not required, since default mode is read.
 
 	GSList* account_list = NULL;
-	account_list = _account_db_query_all(pid);
+	account_list = _account_db_query_all(pid, (uid_t)uid);
 
 	if (account_list == NULL)
 	{
@@ -1292,7 +1292,7 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 		goto RETURN;
 	}
 	_INFO("before _account_query_account_by_account_id");
-	return_code = _account_query_account_by_account_id(pid, account_db_id, account_data);
+	return_code = _account_query_account_by_account_id(pid, (uid_t)uid, account_db_id, account_data);
 	_INFO("after _account_query_account_by_return_code=[%d]", return_code);
 	_INFO("user_name = %s, user_data_txt[0] = %s, user_data_int[1] = %d", account_data->user_name, account_data->user_data_txt[0], account_data->user_data_int[1]);
 
@@ -1378,7 +1378,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 
 	GList* account_list = NULL;
 
-	account_list = _account_query_account_by_user_name(pid, user_name, &return_code);
+	account_list = _account_query_account_by_user_name(pid, (uid_t)uid, user_name, &return_code);
 
 	if (account_list == NULL)
 	{
@@ -1468,7 +1468,7 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 
 	GList* account_list = NULL;
 
-	account_list = _account_query_account_by_package_name(pid, package_name, &return_code);
+	account_list = _account_query_account_by_package_name(pid, (uid_t)uid, package_name, &return_code);
 
 	if (account_list == NULL)
 	{
@@ -1561,7 +1561,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 	GList* account_list = NULL;
 
 	_INFO("before _account_query_account_by_capability");
-	account_list = _account_query_account_by_capability(pid, capability_type, capability_value, &return_code);
+	account_list = _account_query_account_by_capability(pid, (uid_t)uid, capability_type, capability_value, &return_code);
 	_INFO("after _account_query_account_by_capability");
 
 	if (account_list == NULL)
@@ -1652,7 +1652,7 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 
 	GList* account_list = NULL;
 
-	account_list = _account_query_account_by_capability_type(pid, capability_type, &return_code);
+	account_list = _account_query_account_by_capability_type(pid, (uid_t)uid, capability_type, &return_code);
 
 	if (account_list == NULL)
 	{
