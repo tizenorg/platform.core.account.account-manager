@@ -1,7 +1,7 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.1.1
+Version:    0.1.2
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0
@@ -15,18 +15,14 @@ BuildRequires:  pkgconfig(dlog)
 BuildRequires:  pkgconfig(db-util)
 BuildRequires:  pkgconfig(capi-base-common)
 BuildRequires:  pkgconfig(pkgmgr-info)
-BuildRequires:  pkgconfig(aul)
 BuildRequires:	pkgconfig(glib-2.0) >= 2.26
 BuildRequires:  pkgconfig(gio-2.0)
 BuildRequires:  pkgconfig(vconf)
 BuildRequires:  pkgconfig(cynara-client)
 BuildRequires:  pkgconfig(cynara-session)
 BuildRequires:  pkgconfig(cynara-creds-gdbus)
-BuildRequires:  pkgconfig(openssl)
-BuildRequires:  pkgconfig(key-manager)
 BuildRequires:  pkgconfig(account-common)
-BuildRequires:  pkgconfig(accounts-svc)
-BuildRequires:  pkgconfig(libtzplatform-config)
+#BuildRequires:  pkgconfig(libtzplatform-config)
 
 Requires(post): /sbin/ldconfig
 Requires(post): /usr/bin/sqlite3

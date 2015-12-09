@@ -33,7 +33,7 @@
 #include <account_free.h>
 #include <account-mgr-stub.h>
 #include <account-private.h>
-#include <account-error.h>
+#include <account_err.h>
 
 #include "account-server-db.h"
 #define _PRIVILEGE_ACCOUNT_READ "http://tizen.org/privilege/account.read"
@@ -54,24 +54,24 @@ static cynara *p_cynara;
 
 GDBusErrorEntry _account_svc_errors[] =
 {
-	{ACCOUNT_ERROR_NONE, _ACCOUNT_SVC_ERROR_PREFIX".NoError"},
-	{ACCOUNT_ERROR_OUT_OF_MEMORY, _ACCOUNT_SVC_ERROR_PREFIX".OutOfMemory"},
-	{ACCOUNT_ERROR_INVALID_PARAMETER, _ACCOUNT_SVC_ERROR_PREFIX".InvalidParameter"},
-	{ACCOUNT_ERROR_DUPLICATED, _ACCOUNT_SVC_ERROR_PREFIX".Duplicated"},
-	{ACCOUNT_ERROR_NO_DATA, _ACCOUNT_SVC_ERROR_PREFIX".NoData"},
-	{ACCOUNT_ERROR_RECORD_NOT_FOUND, _ACCOUNT_SVC_ERROR_PREFIX".RecordNotFound"},
-	{ACCOUNT_ERROR_DB_FAILED, _ACCOUNT_SVC_ERROR_PREFIX".DBFailed"},
-	{ACCOUNT_ERROR_DB_NOT_OPENED, _ACCOUNT_SVC_ERROR_PREFIX".DBNotOpened"},
-	{ACCOUNT_ERROR_QUERY_SYNTAX_ERROR, _ACCOUNT_SVC_ERROR_PREFIX".QuerySynTaxError"},
-	{ACCOUNT_ERROR_ITERATOR_END, _ACCOUNT_SVC_ERROR_PREFIX".IteratorEnd"},
-	{ACCOUNT_ERROR_NOTI_FAILED, _ACCOUNT_SVC_ERROR_PREFIX".NotiFalied"},
-	{ACCOUNT_ERROR_PERMISSION_DENIED, _ACCOUNT_SVC_ERROR_PREFIX".PermissionDenied"},
-	{ACCOUNT_ERROR_XML_PARSE_FAILED, _ACCOUNT_SVC_ERROR_PREFIX".XMLParseFailed"},
-	{ACCOUNT_ERROR_XML_FILE_NOT_FOUND, _ACCOUNT_SVC_ERROR_PREFIX".FileNotFound"},
-	{ACCOUNT_ERROR_EVENT_SUBSCRIPTION_FAIL, _ACCOUNT_SVC_ERROR_PREFIX".SubscriptionFailed"},
-	{ACCOUNT_ERROR_NOT_REGISTERED_PROVIDER, _ACCOUNT_SVC_ERROR_PREFIX".NotRegisteredProvider"},
-	{ACCOUNT_ERROR_NOT_ALLOW_MULTIPLE, _ACCOUNT_SVC_ERROR_PREFIX".NotAllowMultiple"},
-	{ACCOUNT_ERROR_DATABASE_BUSY, _ACCOUNT_SVC_ERROR_PREFIX".database_busy"},
+	{_ACCOUNT_ERROR_NONE, _ACCOUNT_SVC_ERROR_PREFIX".NoError"},
+	{_ACCOUNT_ERROR_OUT_OF_MEMORY, _ACCOUNT_SVC_ERROR_PREFIX".OutOfMemory"},
+	{_ACCOUNT_ERROR_INVALID_PARAMETER, _ACCOUNT_SVC_ERROR_PREFIX".InvalidParameter"},
+	{_ACCOUNT_ERROR_DUPLICATED, _ACCOUNT_SVC_ERROR_PREFIX".Duplicated"},
+	{_ACCOUNT_ERROR_NO_DATA, _ACCOUNT_SVC_ERROR_PREFIX".NoData"},
+	{_ACCOUNT_ERROR_RECORD_NOT_FOUND, _ACCOUNT_SVC_ERROR_PREFIX".RecordNotFound"},
+	{_ACCOUNT_ERROR_DB_FAILED, _ACCOUNT_SVC_ERROR_PREFIX".DBFailed"},
+	{_ACCOUNT_ERROR_DB_NOT_OPENED, _ACCOUNT_SVC_ERROR_PREFIX".DBNotOpened"},
+	{_ACCOUNT_ERROR_QUERY_SYNTAX_ERROR, _ACCOUNT_SVC_ERROR_PREFIX".QuerySynTaxError"},
+	{_ACCOUNT_ERROR_ITERATOR_END, _ACCOUNT_SVC_ERROR_PREFIX".IteratorEnd"},
+	{_ACCOUNT_ERROR_NOTI_FAILED, _ACCOUNT_SVC_ERROR_PREFIX".NotiFalied"},
+	{_ACCOUNT_ERROR_PERMISSION_DENIED, _ACCOUNT_SVC_ERROR_PREFIX".PermissionDenied"},
+	{_ACCOUNT_ERROR_XML_PARSE_FAILED, _ACCOUNT_SVC_ERROR_PREFIX".XMLParseFailed"},
+	{_ACCOUNT_ERROR_XML_FILE_NOT_FOUND, _ACCOUNT_SVC_ERROR_PREFIX".FileNotFound"},
+	{_ACCOUNT_ERROR_EVENT_SUBSCRIPTION_FAIL, _ACCOUNT_SVC_ERROR_PREFIX".SubscriptionFailed"},
+	{_ACCOUNT_ERROR_NOT_REGISTERED_PROVIDER, _ACCOUNT_SVC_ERROR_PREFIX".NotRegisteredProvider"},
+	{_ACCOUNT_ERROR_NOT_ALLOW_MULTIPLE, _ACCOUNT_SVC_ERROR_PREFIX".NotAllowMultiple"},
+	{_ACCOUNT_ERROR_DATABASE_BUSY, _ACCOUNT_SVC_ERROR_PREFIX".database_busy"},
 };
 
 static guint
@@ -117,7 +117,7 @@ _get_client_pid(GDBusMethodInvocation* invoc)
 }
 
 static GQuark
-_account_error_quark (void)
+__ACCOUNT_ERROR_quark (void)
 {
 	static volatile gsize quark_volatile = 0;
 
@@ -138,14 +138,14 @@ static int __check_privilege_by_cynara(const char *client, const char *session, 
 	switch (ret) {
 		case CYNARA_API_ACCESS_ALLOWED:
 			_DBG("cynara_check success");
-			return ACCOUNT_ERROR_NONE;
+			return _ACCOUNT_ERROR_NONE;
 		case CYNARA_API_ACCESS_DENIED:
 			_ERR("cynara_check permission deined, privilege=%s, error = CYNARA_API_ACCESS_DENIED", privilege);
-			return ACCOUNT_ERROR_PERMISSION_DENIED;
+			return _ACCOUNT_ERROR_PERMISSION_DENIED;
 		default:
 			cynara_strerror(ret, err_buf, sizeof(err_buf));
 			_ERR("cynara_check error : %s, privilege=%s, ret = %d", err_buf, privilege, ret);
-			return ACCOUNT_ERROR_PERMISSION_DENIED;
+			return _ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 }
 
@@ -194,7 +194,7 @@ int __get_information_for_cynara_check(GDBusMethodInvocation *invocation, char *
 		_ERR("cynara_session_from_pid failed");
 		return -1;
 	}
-	return ACCOUNT_ERROR_NONE;
+	return _ACCOUNT_ERROR_NONE;
 }
 
 int _check_privilege(GDBusMethodInvocation *invocation, const char* privilege)
@@ -205,28 +205,28 @@ int _check_privilege(GDBusMethodInvocation *invocation, const char* privilege)
 	char *user = NULL;
 
 	ret = __get_information_for_cynara_check(invocation, &client, &user, &session);
-	if ( ret != ACCOUNT_ERROR_NONE )
+	if ( ret != _ACCOUNT_ERROR_NONE )
 	{
 		_ERR("__get_information_for_cynara_check failed");
 		g_free(client);
 		g_free(user);
 		_ACCOUNT_FREE(session);
-		return ACCOUNT_ERROR_PERMISSION_DENIED;
+		return _ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 
 	ret = __check_privilege_by_cynara(client, session, user, privilege);
-	if ( ret != ACCOUNT_ERROR_NONE )
+	if ( ret != _ACCOUNT_ERROR_NONE )
 	{
 		_ERR("__check_privilege_by_cynara failed, ret = %d", ret);
 		g_free(client);
 		g_free(user);
 		_ACCOUNT_FREE(session);
-		return ACCOUNT_ERROR_PERMISSION_DENIED;
+		return _ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
 	g_free(client);
 	g_free(user);
 	_ACCOUNT_FREE(session);
-	return ACCOUNT_ERROR_NONE;
+	return _ACCOUNT_ERROR_NONE;
 }
 
 int _check_priviliege_account_read(GDBusMethodInvocation *invocation)
@@ -249,21 +249,21 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -271,7 +271,7 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -282,14 +282,14 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 	if (account == NULL)
 	{
 		_ERR("account unmarshalling failed");
-		return_code = ACCOUNT_ERROR_DB_FAILED;
+		return_code = _ACCOUNT_ERROR_DB_FAILED;
 
 		goto RETURN;
 	}
 
 	return_code = _account_insert_to_db(account, pid, (int)uid, &db_id);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_insert_to_db() error");
 
@@ -298,10 +298,10 @@ gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation 
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -311,17 +311,17 @@ RETURN:
 	_INFO("account_manager_account_add end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_free_account_with_items(account);
@@ -339,14 +339,14 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -354,7 +354,7 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -368,7 +368,7 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 
 	if (account_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account found.");
 		goto RETURN;
 	}
@@ -384,7 +384,7 @@ RETURN:
 
 	if (account_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -394,17 +394,17 @@ RETURN:
 	_INFO("account_manager_account_query_all end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -419,14 +419,14 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -434,7 +434,7 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -448,7 +448,7 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 
 	if (account_type_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account type found.");
 		goto RETURN;
 	}
@@ -464,7 +464,7 @@ RETURN:
 
 	if (account_type_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -474,17 +474,17 @@ RETURN:
 	_INFO("account_manager_account_query_all end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -501,20 +501,20 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -522,7 +522,7 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -533,14 +533,14 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 	if (account_type == NULL)
 	{
 		_ERR("account_type unmarshalling failed");
-		return_code = ACCOUNT_ERROR_DB_FAILED;
+		return_code = _ACCOUNT_ERROR_DB_FAILED;
 		goto RETURN;
 	}
 
-	_INFO("before _account_type_insert_to_db");
-	return_code = _account_type_insert_to_db(account_type, &db_id);
-	_INFO("after _account_type_insert_to_db");
-	if (return_code != ACCOUNT_ERROR_NONE)
+	_INFO("before account_server_insert_account_type_to_user_db");
+	return_code = account_server_insert_account_type_to_user_db(account_type, &db_id, (uid_t)uid);
+	_INFO("after account_server_insert_account_type_to_user_db");
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_insert_to_db error");
 		goto RETURN;
@@ -548,10 +548,10 @@ gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvoca
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -561,17 +561,17 @@ RETURN:
 	_INFO("account_manager_account_type_add end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_type_free_account_type_with_items(account_type);
@@ -589,20 +589,20 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -610,7 +610,7 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -621,7 +621,7 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 	return_code = _account_delete(pid, uid, account_db_id);
 	_INFO("after _account_delete=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_delete error");
 		goto RETURN;
@@ -629,10 +629,10 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -642,17 +642,17 @@ RETURN:
 	_INFO("account_manager_account_delete_from_db_by_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -670,20 +670,20 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -691,7 +691,7 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -702,7 +702,7 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 	return_code = _account_delete_from_db_by_user_name(pid, uid, user_name, package_name);
 	_INFO("after _account_delete_from_db_by_user_name=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_delete_from_db_by_user_name error");
 		goto RETURN;
@@ -710,10 +710,10 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -723,17 +723,17 @@ RETURN:
 	_INFO("account_manager_account_delete_from_db_by_user_name end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -746,20 +746,20 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 															 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_package_name start");
-	int return_code = ACCOUNT_ERROR_NONE;
+	int return_code = _ACCOUNT_ERROR_NONE;
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
 
 	if( permission ) {
 		return_code = _check_priviliege_account_read(invocation);
-		if (return_code != ACCOUNT_ERROR_NONE)
+		if (return_code != _ACCOUNT_ERROR_NONE)
 		{
 			_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 			goto RETURN;
 		}
 		return_code = _check_priviliege_account_write(invocation);
-		if (return_code != ACCOUNT_ERROR_NONE)
+		if (return_code != _ACCOUNT_ERROR_NONE)
 		{
 			_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 			goto RETURN;
@@ -767,14 +767,14 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -782,10 +782,10 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 	}
 
 	_INFO("before account_delete_from_db_by_package_name");
-	return_code = _account_delete_from_db_by_package_name(pid, uid, package_name, permission);
+	return_code = account_server_delete_account_by_package_name(package_name, permission, pid, (uid_t)uid);
 	_INFO("after account_delete_from_db_by_package_name=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_delete_from_db_by_package_name error");
 		goto RETURN;
@@ -793,10 +793,10 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -806,17 +806,17 @@ RETURN:
 	_INFO("account_manager_account_delete_from_db_by_package_name end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -835,20 +835,20 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -856,7 +856,7 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -867,7 +867,7 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 	if (account == NULL)
 	{
 		_ERR("Unmarshal failed");
-		return_code = ACCOUNT_ERROR_DB_FAILED;
+		return_code = _ACCOUNT_ERROR_DB_FAILED;
 		goto RETURN;
 	}
 
@@ -875,18 +875,18 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 	return_code = _account_update_to_db_by_id(pid, uid, account, account_id);
 	_INFO("after account_update_to_db_by_id=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_type_update_to_db_by_id error");
+		_ERR("_account_update_to_db_by_id error");
 		goto RETURN;
 	}
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -896,17 +896,17 @@ RETURN:
 	_INFO("account_manager_account_update_to_db_by_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_free_account_with_items(account);
@@ -928,20 +928,20 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -949,7 +949,7 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -960,7 +960,7 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 	if (account == NULL)
 	{
 		_ERR("Unmarshal failed");
-		return_code = ACCOUNT_ERROR_DB_FAILED;
+		return_code = _ACCOUNT_ERROR_DB_FAILED;
 		goto RETURN;
 	}
 
@@ -968,7 +968,7 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 	return_code = _account_update_to_db_by_user_name(pid, uid, account, user_name, package_name);
 	_INFO("after account_update_to_db_by_id=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_update_to_db_by_id error");
 		goto RETURN;
@@ -976,10 +976,10 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -989,17 +989,17 @@ RETURN:
 	_INFO("account_manager_handle_account_update_to_db_by_user_name end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_free_account_with_items(account);
@@ -1020,14 +1020,14 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1035,7 +1035,7 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1047,17 +1047,17 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 	return_code = _account_type_query_label_by_locale(app_id, locale, &label_name);
 	_INFO("after _account_type_query_label_by_locale=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_label_by_locale error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1067,17 +1067,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_label_by_locale end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1097,14 +1097,14 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1112,7 +1112,7 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1131,12 +1131,12 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 
 	if (account_type_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account type found.");
 		goto RETURN;
 	}
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_by_provider_feature error");
 		goto RETURN;
@@ -1152,7 +1152,7 @@ RETURN:
 
 	if (account_type_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1162,17 +1162,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_by_provider_feature end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1186,14 +1186,14 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1201,7 +1201,7 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1214,17 +1214,17 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 	return_code = _account_get_total_count_from_db(include_hidden, &count);
 	_INFO("before account_get_total_count_from_db=[%d], return_code");
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_get_total_count_from_db error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1234,17 +1234,17 @@ RETURN:
 	_INFO("account_manager_account_get_total_count_from_db end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1262,14 +1262,14 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1277,7 +1277,7 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1288,7 +1288,7 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 	if (account_data == NULL)
 	{
 		_ERR("out of memory");
-		return_code = ACCOUNT_ERROR_DB_FAILED;
+		return_code = _ACCOUNT_ERROR_DB_FAILED;
 		goto RETURN;
 	}
 	_INFO("before _account_query_account_by_account_id");
@@ -1296,21 +1296,21 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 	_INFO("after _account_query_account_by_return_code=[%d]", return_code);
 	_INFO("user_name = %s, user_data_txt[0] = %s, user_data_int[1] = %d", account_data->user_name, account_data->user_data_txt[0], account_data->user_data_int[1]);
 
-	if (return_code == ACCOUNT_ERROR_NONE)
+	if (return_code == _ACCOUNT_ERROR_NONE)
 	{
 		account_variant = marshal_account(account_data);
 	}
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_label_by_locale error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (account_variant == NULL || return_code != ACCOUNT_ERROR_NONE)
+	if (account_variant == NULL || return_code != _ACCOUNT_ERROR_NONE)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1320,17 +1320,17 @@ RETURN:
 	_INFO("account_manager_handle_account_query_account_by_account_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_free_account_with_items(account_data);
@@ -1352,14 +1352,14 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1367,7 +1367,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1382,7 +1382,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 
 	if (account_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account found.");
 		goto RETURN;
 	}
@@ -1393,7 +1393,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 	account_list_variant = marshal_account_list_double(account_list);
 	_INFO("after calling marshal_account_list_double");
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_query_account_by_user_name error");
 		goto RETURN;
@@ -1402,7 +1402,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 RETURN:
 	if (account_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1412,17 +1412,17 @@ RETURN:
 	_INFO("account_manager_handle_account_query_account_by_user_name end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1442,14 +1442,14 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1457,7 +1457,7 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1468,11 +1468,11 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 
 	GList* account_list = NULL;
 
-	account_list = _account_query_account_by_package_name(pid, (uid_t)uid, package_name, &return_code);
+	account_list = account_server_query_account_by_package_name(package_name, &return_code, pid, (uid_t)uid);
 
 	if (account_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account found.");
 		goto RETURN;
 	}
@@ -1481,7 +1481,7 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 
 	account_list_variant = marshal_account_list_double(account_list);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_query_account_by_package_name error");
 		goto RETURN;
@@ -1491,7 +1491,7 @@ RETURN:
 
 	if (account_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		_INFO("sending error Domain[%d] Message[%s] Code[%d]", error->domain, error->message, error->code);
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
@@ -1502,17 +1502,17 @@ RETURN:
 	_INFO("account_manager_handle_account_query_account_by_package_name start");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1534,14 +1534,14 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1549,7 +1549,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1566,7 +1566,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 
 	if (account_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account found.");
 		goto RETURN;
 	}
@@ -1575,7 +1575,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 
 	account_list_variant = marshal_account_list_double(account_list);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_query_account_by_capability error");
 		goto RETURN;
@@ -1585,7 +1585,7 @@ RETURN:
 
 	if (account_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1595,17 +1595,17 @@ RETURN:
 	_INFO("account_manager_handle_account_query_account_by_capability end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1626,14 +1626,14 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1641,7 +1641,7 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1656,7 +1656,7 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 
 	if (account_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No account found.");
 		goto RETURN;
 	}
@@ -1667,7 +1667,7 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 	account_list_variant = marshal_account_list_double(account_list);
 	_INFO("after calling marshal_account_list_double");
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_query_account_by_capability_type error");
 		goto RETURN;
@@ -1677,7 +1677,7 @@ RETURN:
 
 	if (account_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1687,17 +1687,17 @@ RETURN:
 	_INFO("account_manager_handle_account_query_account_by_capability_type end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1718,14 +1718,14 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1733,7 +1733,7 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1748,7 +1748,7 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 
 	if (capability_list == NULL)
 	{
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		_ERR("No capability found.");
 		goto RETURN;
 	}
@@ -1759,7 +1759,7 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 	capability_list_variant = marshal_capability_list(capability_list);
 	_INFO("after calling marshal_capability_list");
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_get_capability_list_by_account_id error");
 		goto RETURN;
@@ -1769,7 +1769,7 @@ RETURN:
 
 	if (capability_list_variant == NULL)
 	{
-		GError* error = g_error_new (_account_error_quark(), ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1779,17 +1779,17 @@ RETURN:
 	_INFO("account_manager_handle_account_query_capability_by_account_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1807,20 +1807,20 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1828,7 +1828,7 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1839,7 +1839,7 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 	return_code = _account_update_sync_status_by_id(uid, account_db_id, sync_status);
 	_INFO("after _account_update_sync_status_by_id=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_update_sync_status_by_id error");
 		goto RETURN;
@@ -1847,10 +1847,10 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 
 RETURN:
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1860,17 +1860,17 @@ RETURN:
 	_INFO("account_manager_handle_account_update_sync_status_by_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1891,14 +1891,14 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1906,7 +1906,7 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -1920,23 +1920,23 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 	if (feature_record_list == NULL)
 	{
 		_ERR("account feature_record_list is NULL");
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		goto RETURN;
 	}
 
 	feature_record_list_variant = provider_feature_list_to_variant(feature_record_list);
 	_INFO("%s", g_variant_print(feature_record_list_variant, true));
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_provider_feature_by_app_id error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -1947,17 +1947,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_provider_feature_by_app_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -1977,14 +1977,14 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -1992,7 +1992,7 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -2003,16 +2003,16 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 	is_supported = _account_type_query_supported_feature(app_id, capability, &return_code);
 	_INFO("after _account_type_query_supported_feature=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_supported_feature error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2023,17 +2023,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_supported_feature end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -2053,20 +2053,20 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -2074,7 +2074,7 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -2087,16 +2087,16 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 	return_code = _account_type_update_to_db_by_app_id(account_type, app_id);
 	_INFO("after _account_type_update_to_db_by_app_id=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_update_to_db_by_app_id error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2107,17 +2107,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_update_to_db_by_app_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_type_free_account_type_with_items(account_type);
@@ -2137,20 +2137,20 @@ gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *o
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -2158,27 +2158,27 @@ gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *o
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	_INFO("before _account_type_delete_by_app_id");
-	return_code = _account_type_delete_by_app_id (app_id);
-	_INFO("after _account_type_delete_by_app_id=[%d]", return_code);
+	_INFO("before account_server_delete_account_type_by_app_id_from_user_db");
+	return_code = account_server_delete_account_type_by_app_id_from_user_db(app_id);
+	_INFO("after account_server_delete_account_type_by_app_id_from_user_db=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_account_type_delete_by_app_id error");
+		_ERR("account_server_delete_account_type_by_app_id error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2189,17 +2189,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_delete_by_app_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -2219,14 +2219,14 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -2234,7 +2234,7 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -2245,7 +2245,7 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 	label_list = _account_type_get_label_list_by_app_id (app_id, &return_code);
 	_INFO("after _account_type_get_label_list_by_app_id=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_get_label_list_by_app_id = [%d]", return_code);
 		goto RETURN;
@@ -2254,9 +2254,9 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 	label_list_variant = label_list_to_variant (label_list);
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2267,17 +2267,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_label_by_app_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -2296,14 +2296,14 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -2311,7 +2311,7 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -2323,7 +2323,7 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 	return_code = _account_type_query_by_app_id (app_id, &account_type);
 	_INFO("after _account_type_query_by_app_id=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_by_app_id = [%d]", return_code);
 		goto RETURN;
@@ -2331,17 +2331,17 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 	if (account_type == NULL)
 	{
 		_ERR("account_type read is NULL");
-		return_code = ACCOUNT_ERROR_RECORD_NOT_FOUND;
+		return_code = _ACCOUNT_ERROR_RECORD_NOT_FOUND;
 		goto RETURN;
 	}
 
 	account_type_variant = marshal_account_type( account_type);
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2352,17 +2352,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_by_app_id end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_type_free_account_type_with_items(account_type);
@@ -2381,14 +2381,14 @@ gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager 
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(0, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -2396,28 +2396,28 @@ gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager 
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
 		goto RETURN;
 	}
 
-	_INFO("before _account_type_query_app_id_exist_from_all_db");
-	return_code = _account_type_query_app_id_exist_from_all_db (app_id);
-	_INFO("after _account_type_query_app_id_exist_from_all_db=[%d]", return_code);
+	_INFO("before _account_server_query_app_id_exist");
+	return_code = account_server_query_app_id_exist(app_id);
+	_INFO("after _account_server_query_app_id_exist=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_type_query_app_id_exist_from_all_db = [%d]", return_code);
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2428,17 +2428,17 @@ RETURN:
 	_INFO("account_manager_handle_account_type_query_app_id_exist end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return true;
@@ -2457,20 +2457,20 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 	_INFO("client Id = [%u]", pid);
 
 	int return_code = _check_priviliege_account_read(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_read failed, ret = %d", return_code);
 		goto RETURN;
 	}
 	return_code = _check_priviliege_account_write(invocation);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_check_priviliege_account_write failed, ret = %d", return_code);
 		goto RETURN;
 	}
 
 	return_code = _account_db_open(1, pid, uid);
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_db_open() error, ret = %d", return_code);
 
@@ -2478,7 +2478,7 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 	}
 
 	return_code = _account_global_db_open();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_global_db_open() error, ret = %d", return_code);
 
@@ -2489,7 +2489,7 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 	if (account == NULL)
 	{
 		_ERR("Unmarshal failed");
-		return_code = ACCOUNT_ERROR_INVALID_PARAMETER;
+		return_code = _ACCOUNT_ERROR_INVALID_PARAMETER;
 		goto RETURN;
 	}
 
@@ -2497,17 +2497,17 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 	return_code = _account_update_to_db_by_id_ex (account, account_id);
 	_INFO("after _account_update_to_db_by_id_ex()=[%d]", return_code);
 
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_account_update_to_db_by_id_ex error");
 		goto RETURN;
 	}
 
 RETURN:
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("Account SVC is returning error [%d]", return_code);
-		GError* error = g_error_new (_account_error_quark(), return_code, "RecordNotFound");
+		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
 	}
 	else
@@ -2518,17 +2518,17 @@ RETURN:
 	_INFO("in account_manager_handle_account_update_to_db_by_id_ex_p end");
 
 	return_code = _account_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	return_code = _account_global_db_close();
-	if (return_code != ACCOUNT_ERROR_NONE)
+	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		ACCOUNT_DEBUG("_account_global_db_close() fail[%d]", return_code);
-		return_code = ACCOUNT_ERROR_NONE;
+		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
 	_account_free_account_with_items(account);
