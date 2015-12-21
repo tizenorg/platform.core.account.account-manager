@@ -350,9 +350,10 @@ int _account_db_open(int mode, int pid, uid_t uid)
 		ACCOUNT_DEBUG( "db_util_close(g_hAccountDB2) fail ret = %d", ret);
 
 	ACCOUNT_GET_USER_DB_DIR(account_db_dir, sizeof(account_db_dir), uid);
-	if (-1 == access (account_db_dir, F_OK)) {
-		mkdir(account_db_dir, 644);
-	}
+
+	if (mkdir(account_db_dir, 644) != 0)
+		ACCOUNT_DEBUG("mkdir \"%s\" fail", account_db_dir);
+
 
 	ACCOUNT_DEBUG( "before db_util_open()");
 //	if(mode == ACCOUNT_DB_OPEN_READWRITE)
@@ -1098,7 +1099,10 @@ int _account_insert_to_db(account_s* account, int pid, uid_t uid, int *account_i
 	error_code = encrypt_access_token(data);
 	if (error_code != _ACCOUNT_ERROR_NONE)
 	{
-		_ERR("_encrypt_access_token error");
+		ret_transaction = _account_end_transaction(g_hAccountDB, FALSE);
+		ACCOUNT_ERROR("encrypt_access_token fail, rollback insert query(%x)!!!!\n", ret_transaction);
+		*account_id = -1;
+		pthread_mutex_unlock(&account_mutex);
 		return error_code;
 	}
 
