@@ -306,8 +306,8 @@ static bool _account_check_add_more_account(const char* app_id)
 	ACCOUNT_SNPRINTF(query, sizeof(query), "SELECT COUNT(*) FROM %s WHERE AppId = '%s' and MultipleAccountSupport = 1", ACCOUNT_TYPE_TABLE, app_id);
 	rc = _account_get_record_count(g_hAccountDB, query);
 
-	/* multiple account support case */
-	if(rc > 0) {
+	/* multiple account support case (User DB & global DB) */
+	if(rc > 0 || _account_get_record_count(g_hAccountGlobalDB, query) > 0) {
 		ACCOUNT_SLOGD("app id (%s) supports multiple account. rc(%d)\n", app_id, rc);
 		return TRUE;
 	}
