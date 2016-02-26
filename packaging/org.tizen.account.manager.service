@@ -4,3 +4,5 @@ Description=Account Service D-BUS
 [D-BUS Service]
 Name=org.tizen.account.manager
 Exec=/usr/bin/account-svcd
+User=root
+Group=root

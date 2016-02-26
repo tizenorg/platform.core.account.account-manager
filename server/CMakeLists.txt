@@ -22,6 +22,7 @@ ENDFOREACH(flag)
 SET(SERVER_SRCS
 	src/account-server.c
 	src/account-server-db.c
+	src/lifecycle.c
 )
 
 INCLUDE_DIRECTORIES(${CMAKE_SOURCE_DIR}/server/include)

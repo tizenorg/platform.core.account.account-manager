@@ -36,6 +36,7 @@
 #include <account_err.h>
 
 #include "account-server-db.h"
+#include "lifecycle.h"
 #define _PRIVILEGE_ACCOUNT_READ "http://tizen.org/privilege/account.read"
 #define _PRIVILEGE_ACCOUNT_WRITE "http://tizen.org/privilege/account.write"
 
@@ -43,6 +44,8 @@
 static guint owner_id = 0;
 GDBusObjectManagerServer *account_mgr_server_mgr = NULL;
 static AccountManager* account_mgr_server_obj = NULL;
+
+static GMainLoop *mainloop = NULL;
 
 static cynara *p_cynara;
 
@@ -242,6 +245,8 @@ int _check_priviliege_account_write(GDBusMethodInvocation *invocation)
 gboolean account_manager_account_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant* account_data, gint uid, gpointer user_data)
 {
 	_INFO("account_manager_account_add start");
+	lifecycle_method_call_active();
+
 	int db_id = -1;
 	account_s* account = NULL;
 
@@ -308,7 +313,6 @@ RETURN:
 	{
 		account_manager_complete_account_add(obj, invocation, db_id);
 	}
-	_INFO("account_manager_account_add end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -326,12 +330,15 @@ RETURN:
 
 	_account_free_account_with_items(account);
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_add end");
 	return true;
 }
 
 gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gint uid)
 {
 	_INFO("account_manager_account_query_all start");
+	lifecycle_method_call_active();
 
 	GVariant* account_list_variant = NULL;
 
@@ -391,7 +398,6 @@ RETURN:
 	{
 		account_manager_complete_account_query_all(obj, invocation, account_list_variant);
 	}
-	_INFO("account_manager_account_query_all end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -407,12 +413,15 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_query_all end");
 	return true;
 }
 
 gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethodInvocation *invocation, gint uid)
 {
 	_INFO("account_manager_account_query_all start");
+	lifecycle_method_call_active();
 
 	GVariant* account_type_list_variant = NULL;
 	guint pid = _get_client_pid(invocation);
@@ -471,7 +480,6 @@ RETURN:
 	{
 		account_manager_complete_account_type_query_all(obj, invocation, account_type_list_variant);
 	}
-	_INFO("account_manager_account_query_all end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -487,15 +495,18 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_query_all end");
 	return true;
 }
 
 gboolean account_manager_account_type_add(AccountManager *obj, GDBusMethodInvocation *invocation, GVariant *account_type_data, gint uid, gpointer user_data)
 {
+	_INFO("account_manager_account_type_add start");
+	lifecycle_method_call_active();
+
 	int db_id = -1;
 	account_type_s* account_type = NULL;
-
-	_INFO("account_manager_account_type_add start");
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
@@ -558,7 +569,6 @@ RETURN:
 	{
 		account_manager_complete_account_type_add(obj, invocation, db_id);
 	}
-	_INFO("account_manager_account_type_add end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -575,6 +585,9 @@ RETURN:
 	}
 
 	_account_type_free_account_type_with_items(account_type);
+
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_type_add end");
 	return true;
 }
 
@@ -584,6 +597,7 @@ gboolean account_manager_account_delete_from_db_by_id(AccountManager *object,
 											 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_id start");
+	lifecycle_method_call_active();
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
@@ -639,7 +653,6 @@ RETURN:
 	{
 		account_manager_complete_account_delete_from_db_by_id(object, invocation);
 	}
-	_INFO("account_manager_account_delete_from_db_by_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -655,6 +668,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_delete_from_db_by_id end");
 	return true;
 }
 
@@ -665,6 +680,7 @@ gboolean account_manager_account_delete_from_db_by_user_name(AccountManager *obj
 															 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_user_name start");
+	lifecycle_method_call_active();
 
 	guint pid = _get_client_pid(invocation);
 	_INFO("client Id = [%u]", pid);
@@ -720,7 +736,6 @@ RETURN:
 	{
 		account_manager_complete_account_delete_from_db_by_id(object, invocation);
 	}
-	_INFO("account_manager_account_delete_from_db_by_user_name end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -736,6 +751,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_delete_from_db_by_user_name end");
 	return true;
 }
 
@@ -746,6 +763,8 @@ gboolean account_manager_account_delete_from_db_by_package_name(AccountManager *
 															 gint uid)
 {
 	_INFO("account_manager_account_delete_from_db_by_package_name start");
+	lifecycle_method_call_active();
+
 	int return_code = _ACCOUNT_ERROR_NONE;
 
 	guint pid = _get_client_pid(invocation);
@@ -803,7 +822,6 @@ RETURN:
 	{
 		account_manager_complete_account_delete_from_db_by_package_name(object, invocation);
 	}
-	_INFO("account_manager_account_delete_from_db_by_package_name end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -819,6 +837,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_delete_from_db_by_package_name end");
 	return true;
 }
 
@@ -829,6 +849,8 @@ gboolean account_manager_account_update_to_db_by_id(AccountManager *object,
 															gint uid)
 {
 	_INFO("account_manager_account_update_to_db_by_id start");
+	lifecycle_method_call_active();
+
 	account_s* account = NULL;
 
 	guint pid = _get_client_pid(invocation);
@@ -893,7 +915,6 @@ RETURN:
 	{
 		account_manager_complete_account_update_to_db_by_id(object, invocation);
 	}
-	_INFO("account_manager_account_update_to_db_by_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -911,6 +932,8 @@ RETURN:
 
 	_account_free_account_with_items(account);
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_update_to_db_by_id end");
 	return true;
 }
 
@@ -922,6 +945,8 @@ gboolean account_manager_handle_account_update_to_db_by_user_name(AccountManager
 															gint uid)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_user_name start");
+	lifecycle_method_call_active();
+
 	account_s* account = NULL;
 
 	guint pid = _get_client_pid(invocation);
@@ -986,7 +1011,6 @@ RETURN:
 	{
 		account_manager_complete_account_update_to_db_by_id(object, invocation);
 	}
-	_INFO("account_manager_handle_account_update_to_db_by_user_name end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1004,6 +1028,8 @@ RETURN:
 
 	_account_free_account_with_items(account);
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_update_to_db_by_user_name end");
 	return true;
 }
 
@@ -1015,6 +1041,8 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_locale start");
+	lifecycle_method_call_active();
+
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -1064,7 +1092,6 @@ RETURN:
 	{
 		account_manager_complete_account_type_query_label_by_locale(object, invocation, label_name);
 	}
-	_INFO("account_manager_handle_account_type_query_label_by_locale end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1080,6 +1107,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_label_by_locale end");
 	return true;
 }
 
@@ -1090,6 +1119,8 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_by_provider_feature start");
+	lifecycle_method_call_active();
+
 	GVariant* account_type_list_variant = NULL;
 
 	guint pid = _get_client_pid(invocation);
@@ -1159,7 +1190,6 @@ RETURN:
 	{
 		account_manager_complete_account_type_query_by_provider_feature(obj, invocation, account_type_list_variant);
 	}
-	_INFO("account_manager_handle_account_type_query_by_provider_feature end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1175,12 +1205,16 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_by_provider_feature end");
 	return true;
 }
 
 gboolean account_manager_account_get_total_count_from_db(AccountManager *object, GDBusMethodInvocation *invocation, gboolean include_hidden, gint uid)
 {
 	_INFO("account_manager_account_get_total_count_from_db start");
+	lifecycle_method_call_active();
+
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -1231,7 +1265,6 @@ RETURN:
 	{
 		account_manager_complete_account_get_total_count_from_db(object, invocation, count);
 	}
-	_INFO("account_manager_account_get_total_count_from_db end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1247,6 +1280,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_account_get_total_count_from_db end");
 	return true;
 }
 
@@ -1254,6 +1289,8 @@ gboolean account_manager_handle_account_query_account_by_account_id(AccountManag
 		gint account_db_id, gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_account_id start");
+	lifecycle_method_call_active();
+
 	GVariant* account_variant = NULL;
 	account_s* account_data = NULL;
 
@@ -1317,7 +1354,6 @@ RETURN:
 	{
 		account_manager_complete_account_query_account_by_account_id(object, invocation, account_variant);
 	}
-	_INFO("account_manager_handle_account_query_account_by_account_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1335,6 +1371,8 @@ RETURN:
 
 	_account_free_account_with_items(account_data);
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_query_account_by_account_id end");
 	return true;
 }
 
@@ -1345,6 +1383,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_user_name start");
+	lifecycle_method_call_active();
 
 	GVariant* account_list_variant = NULL;
 	guint pid = _get_client_pid(invocation);
@@ -1409,7 +1448,6 @@ RETURN:
 	{
 		account_manager_complete_account_query_account_by_user_name(obj, invocation, account_list_variant);
 	}
-	_INFO("account_manager_handle_account_query_account_by_user_name end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1425,6 +1463,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_query_account_by_user_name end");
 	return true;
 }
 
@@ -1435,6 +1475,7 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_package_name start");
+	lifecycle_method_call_active();
 
 	GVariant* account_list_variant = NULL;
 	guint pid = _get_client_pid(invocation);
@@ -1515,6 +1556,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_query_account_by_package_name start");
 	return true;
 }
 
@@ -1526,6 +1569,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability start");
+	lifecycle_method_call_active();
 
 	GVariant* account_list_variant = NULL;
 
@@ -1592,7 +1636,6 @@ RETURN:
 	{
 		account_manager_complete_account_query_account_by_capability(obj, invocation, account_list_variant);
 	}
-	_INFO("account_manager_handle_account_query_account_by_capability end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1608,6 +1651,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_query_account_by_capability end");
 	return true;
 }
 
@@ -1618,6 +1663,7 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_account_by_capability_type start");
+	lifecycle_method_call_active();
 
 	GVariant* account_list_variant = NULL;
 
@@ -1684,7 +1730,6 @@ RETURN:
 	{
 		account_manager_complete_account_query_account_by_capability(obj, invocation, account_list_variant);
 	}
-	_INFO("account_manager_handle_account_query_account_by_capability_type end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1700,6 +1745,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_query_account_by_capability_type end");
 	return true;
 }
 
@@ -1710,6 +1757,7 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 														  gint uid)
 {
 	_INFO("account_manager_handle_account_query_capability_by_account_id start");
+	lifecycle_method_call_active();
 
 	GVariant* capability_list_variant = NULL;
 
@@ -1776,7 +1824,6 @@ RETURN:
 	{
 		account_manager_complete_account_query_capability_by_account_id(obj, invocation, capability_list_variant);
 	}
-	_INFO("account_manager_handle_account_query_capability_by_account_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1792,6 +1839,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_query_capability_by_account_id end");
 	return true;
 }
 
@@ -1802,6 +1851,8 @@ gboolean account_manager_handle_account_update_sync_status_by_id(AccountManager 
 															gint uid)
 {
 	_INFO("account_manager_handle_account_update_sync_status_by_id start");
+	lifecycle_method_call_active();
+
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -1857,7 +1908,6 @@ RETURN:
 	{
 		account_manager_complete_account_update_sync_status_by_id(object, invocation);
 	}
-	_INFO("account_manager_handle_account_update_sync_status_by_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1873,6 +1923,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_update_sync_status_by_id end");
 	return true;
 }
 
@@ -1881,10 +1933,11 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 															const gchar* app_id,
 															gint uid)
 {
+	_INFO("account_manager_handle_account_type_query_provider_feature_by_app_id start");
+	lifecycle_method_call_active();
+
 	GSList* feature_record_list = NULL;
 	GVariant* feature_record_list_variant = NULL;
-
-	_INFO("account_manager_handle_account_type_query_provider_feature_by_app_id start");
 
 	guint pid = _get_client_pid(invocation);
 
@@ -1944,7 +1997,6 @@ RETURN:
 		_INFO("Calling account_manager_complete_account_type_query_provider_feature_by_app_id");
 		account_manager_complete_account_type_query_provider_feature_by_app_id(obj, invocation, feature_record_list_variant);
 	}
-	_INFO("account_manager_handle_account_type_query_provider_feature_by_app_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1960,6 +2012,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_provider_feature_by_app_id end");
 	return true;
 }
 
@@ -1969,9 +2023,10 @@ gboolean account_manager_handle_account_type_query_supported_feature(AccountMana
 															const gchar* capability,
 															gint uid)
 {
-	int is_supported = 0;
-
 	_INFO("account_manager_handle_account_type_query_supported_feature start");
+	lifecycle_method_call_active();
+
+	int is_supported = 0;
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -2020,7 +2075,6 @@ RETURN:
 		_INFO("Calling account_manager_complete_account_type_query_provider_feature_by_app_id");
 		account_manager_complete_account_type_query_supported_feature(obj, invocation, is_supported);
 	}
-	_INFO("account_manager_handle_account_type_query_supported_feature end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2036,6 +2090,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_supported_feature end");
 	return true;
 }
 
@@ -2046,6 +2102,8 @@ gboolean account_manager_handle_account_type_update_to_db_by_app_id (AccountMana
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_update_to_db_by_app_id start");
+	lifecycle_method_call_active();
+
 	account_type_s* account_type = NULL;
 
 	guint pid = _get_client_pid(invocation);
@@ -2104,7 +2162,6 @@ RETURN:
 		_INFO("Calling account_manager_complete_account_type_update_to_db_by_app_id");
 		account_manager_complete_account_type_update_to_db_by_app_id(obj, invocation);
 	}
-	_INFO("account_manager_handle_account_type_update_to_db_by_app_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2122,6 +2179,8 @@ RETURN:
 
 	_account_type_free_account_type_with_items(account_type);
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_update_to_db_by_app_id end");
 	return true;
 }
 
@@ -2131,6 +2190,7 @@ gboolean account_manager_handle_account_type_delete_by_app_id (AccountManager *o
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_delete_by_app_id start");
+	lifecycle_method_call_active();
 
 	guint pid = _get_client_pid(invocation);
 
@@ -2186,7 +2246,6 @@ RETURN:
 		_ERR("Calling account_manager_complete_account_type_update_to_db_by_app_id");
 		account_manager_complete_account_type_delete_by_app_id (obj, invocation);
 	}
-	_INFO("account_manager_handle_account_type_delete_by_app_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2202,6 +2261,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_delete_by_app_id end");
 	return true;
 }
 
@@ -2211,6 +2272,8 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_label_by_app_id start");
+	lifecycle_method_call_active();
+
 	GSList* label_list = NULL;
 	GVariant* label_list_variant = NULL;
 
@@ -2264,7 +2327,6 @@ RETURN:
 		_ERR("Calling account_manager_complete_account_type_query_label_by_app_id");
 		account_manager_complete_account_type_query_label_by_app_id (obj, invocation, label_list_variant);
 	}
-	_INFO("account_manager_handle_account_type_query_label_by_app_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2280,6 +2342,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_label_by_app_id end");
 	return true;
 }
 
@@ -2289,6 +2353,8 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_by_app_id start");
+	lifecycle_method_call_active();
+
 	GVariant* account_type_variant = NULL;
 
 	guint pid = _get_client_pid(invocation);
@@ -2349,7 +2415,6 @@ RETURN:
 		_INFO("Calling account_manager_complete_account_type_query_by_app_id");
 		account_manager_complete_account_type_query_by_app_id (obj, invocation, account_type_variant);
 	}
-	_INFO("account_manager_handle_account_type_query_by_app_id end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2367,6 +2432,8 @@ RETURN:
 
 	_account_type_free_account_type_with_items(account_type);
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_by_app_id end");
 	return true;
 }
 
@@ -2376,6 +2443,8 @@ gboolean account_manager_handle_account_type_query_app_id_exist (AccountManager 
 															gint uid)
 {
 	_INFO("account_manager_handle_account_type_query_app_id_exist start");
+	lifecycle_method_call_active();
+
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -2425,7 +2494,6 @@ RETURN:
 		_INFO("Calling account_manager_complete_account_type_query_by_app_id_exist");
 		account_manager_complete_account_type_query_app_id_exist (obj, invocation);
 	}
-	_INFO("account_manager_handle_account_type_query_app_id_exist end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2441,6 +2509,8 @@ RETURN:
 		return_code = _ACCOUNT_ERROR_NONE;
 	}
 
+	lifecycle_method_call_inactive();
+	_INFO("account_manager_handle_account_type_query_app_id_exist end");
 	return true;
 }
 
@@ -2451,6 +2521,8 @@ gboolean account_manager_handle_account_update_to_db_by_id_ex (AccountManager *o
 															gint uid)
 {
 	_INFO("account_manager_handle_account_update_to_db_by_id_ex start");
+	lifecycle_method_call_active();
+
 	account_s* account = NULL;
 	guint pid = _get_client_pid(invocation);
 
@@ -2515,7 +2587,6 @@ RETURN:
 		_INFO("Calling account_manager_complete_account_update_to_db_by_id_ex");
 		account_manager_complete_account_update_to_db_by_id_ex (obj, invocation);
 	}
-	_INFO("in account_manager_handle_account_update_to_db_by_id_ex_p end");
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -2533,6 +2604,8 @@ RETURN:
 
 	_account_free_account_with_items(account);
 
+	lifecycle_method_call_inactive();
+	_INFO("in account_manager_handle_account_update_to_db_by_id_ex_p end");
 	return true;
 }
 
@@ -2650,6 +2723,14 @@ on_bus_acquired (GDBusConnection *connection, const gchar *name, gpointer user_d
 		_INFO("on_bus_acquired end [%s]", name);
 }
 
+void terminate_main_loop()
+{
+	if (mainloop)
+		g_main_loop_quit(mainloop);
+	else
+		_ERR("account manager's g_mainloop is NULL");
+}
+
 static void
 on_name_acquired (GDBusConnection *connection,
 						const gchar     *name,
@@ -2693,6 +2774,12 @@ static bool _initialize_dbus()
 	return true;
 }
 
+static void _terminate_server_by_timeout()
+{
+	lifecycle_method_call_active();
+	lifecycle_method_call_inactive();
+}
+
 static void _initialize()
 {
 #if !GLIB_CHECK_VERSION(2,35,0)
@@ -2712,12 +2799,12 @@ static void _initialize()
 		_ERR("CYNARA Initialization fail");
 		exit(1);
 	}
+
+	_terminate_server_by_timeout();
 }
 
 int main()
 {
-	GMainLoop *mainloop = NULL;
-
 	_INFO("Starting Accounts SVC");
 
 	mainloop = g_main_loop_new(NULL, FALSE);

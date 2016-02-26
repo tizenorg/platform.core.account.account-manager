@@ -6,8 +6,8 @@ Requires=tizen-runtime.target
 [Service]
 #User=system
 #Gruop=system
-#SmackProcessLabel=libaccounts-svc
-#Type=simple
+Type=dbus
+BusName=org.tizen.account.manager
 ExecStart=/usr/bin/account-svcd
 #Restart=always
 #RestartSec=1
