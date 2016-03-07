@@ -46,7 +46,7 @@ cp %{SOURCE1} .
 
 export CFLAGS="${CFLAGS} -fvisibility=hidden -fPIE"
 export LDFLAGS="${LDFLAGS} -pie"
-cmake . -DCMAKE_INSTALL_PREFIX=/usr -DLIBDIR=%{_libdir} -DBINDIR=%{_bindir}
+cmake . -DCMAKE_INSTALL_PREFIX=/usr -DLIBDIR=%{_libdir}
 
 make %{?jobs:-j%jobs}
 
