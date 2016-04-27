@@ -48,6 +48,9 @@ cp %{SOURCE1} .
 #export   CFLAGS+=" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-strict-aliasing -fno-unroll-loops -fsigned-char -fstrict-overflow -fno-common"
 #export CXXFLAGS+=" -fno-omit-frame-pointer -fno-optimize-sibling-calls -fno-strict-aliasing -fno-unroll-loops -fsigned-char -fstrict-overflow"
 
+export   CFLAGS+=" -Wno-error=int-conversion"
+export CXXFLAGS+=" -Wno-error=int-conversion"
+
 export CFLAGS="${CFLAGS} -fvisibility=hidden -fPIE"
 export LDFLAGS="${LDFLAGS} -pie"
 cmake . -DCMAKE_INSTALL_PREFIX=/usr -DLIBDIR=%{_libdir}
