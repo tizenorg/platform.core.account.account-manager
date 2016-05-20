@@ -4040,6 +4040,7 @@ int _account_type_query_by_provider_feature_from_global_db(const char* key, GSLi
 		*account_type_list_all = g_slist_append(*account_type_list_all, account_type);
 		_INFO("add account_type");
 	}
+	g_slist_free(account_type_list);
 
 	error_code = _ACCOUNT_ERROR_NONE;
 
@@ -4233,6 +4234,7 @@ int _account_type_query_all_from_global_db(GSList **account_type_list_all)
 		account_type = (account_type_s*)iter->data;
 		*account_type_list_all = g_slist_append(*account_type_list_all, account_type);
 	}
+	g_slist_free(account_type_list);
 
 	error_code = _ACCOUNT_ERROR_NONE;
 CATCH:

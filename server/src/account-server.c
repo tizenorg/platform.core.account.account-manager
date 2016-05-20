@@ -308,6 +308,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -385,6 +386,7 @@ gboolean account_manager_account_query_all(AccountManager *obj, GDBusMethodInvoc
 	return_code = 0;
 	_INFO("before calling marshal_account_list");
 	account_list_variant = marshal_account_list(account_list);
+	_account_gslist_account_free(account_list);
 	_INFO("after calling marshal_account_list");
 
 RETURN:
@@ -393,6 +395,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -467,6 +470,7 @@ gboolean account_manager_account_type_query_all(AccountManager *obj, GDBusMethod
 	return_code = 0;
 	_INFO("before calling marshal_account_type_list");
 	account_type_list_variant = marshal_account_type_list(account_type_list);
+	_account_type_gslist_account_type_free(account_type_list);
 	_INFO("after calling marshal_account_type_list");
 
 RETURN:
@@ -475,6 +479,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -564,6 +569,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -648,6 +654,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -731,6 +738,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -817,6 +825,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -910,6 +919,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1006,6 +1016,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1087,11 +1098,13 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
 		account_manager_complete_account_type_query_label_by_locale(object, invocation, label_name);
 	}
+	_ACCOUNT_FREE(label_name);
 
 	return_code = _account_db_close();
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1177,6 +1190,7 @@ account_manager_handle_account_type_query_by_provider_feature(AccountManager *ob
 
 	_INFO("before calling marshal_account_type_list");
 	account_type_list_variant = marshal_account_type_list(account_type_list);
+	_account_type_gslist_account_type_free(account_type_list);
 	_INFO("after calling marshal_account_type_list");
 
 RETURN:
@@ -1185,6 +1199,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1260,6 +1275,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1349,6 +1365,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1430,6 +1447,7 @@ account_manager_handle_account_query_account_by_user_name(AccountManager *obj,
 
 	_INFO("before calling marshal_account_list_double");
 	account_list_variant = marshal_account_list_double(account_list);
+	_account_glist_account_free(account_list);
 	_INFO("after calling marshal_account_list_double");
 
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1443,6 +1461,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1521,6 +1540,7 @@ account_manager_handle_account_query_account_by_package_name(AccountManager *obj
 	_INFO("account_list length= [%d]", g_list_length(account_list));
 
 	account_list_variant = marshal_account_list_double(account_list);
+	_account_glist_account_free(account_list);
 
 	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
@@ -1533,8 +1553,8 @@ RETURN:
 	if (account_list_variant == NULL)
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
-		_INFO("sending error Domain[%d] Message[%s] Code[%d]", error->domain, error->message, error->code);
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1618,6 +1638,7 @@ account_manager_handle_account_query_account_by_capability(AccountManager *obj,
 	_INFO("account_list length= [%d]", g_list_length(account_list));
 
 	account_list_variant = marshal_account_list_double(account_list);
+	_account_glist_account_free(account_list);
 
 	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
@@ -1631,6 +1652,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1711,6 +1733,7 @@ account_manager_handle_account_query_account_by_capability_type(AccountManager *
 
 	_INFO("before calling marshal_account_list_double");
 	account_list_variant = marshal_account_list_double(account_list);
+	_account_glist_account_free(account_list);
 	_INFO("after calling marshal_account_list_double");
 
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1725,6 +1748,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1805,6 +1829,7 @@ account_manager_handle_account_query_capability_by_account_id(AccountManager *ob
 
 	_INFO("before calling marshal_capability_list");
 	capability_list_variant = marshal_capability_list(capability_list);
+	_account_gslist_capability_free(capability_list);
 	_INFO("after calling marshal_capability_list");
 
 	if (return_code != _ACCOUNT_ERROR_NONE)
@@ -1819,6 +1844,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), _ACCOUNT_ERROR_RECORD_NOT_FOUND, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1903,6 +1929,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -1978,7 +2005,7 @@ gboolean account_manager_handle_account_type_query_provider_feature_by_app_id(Ac
 	}
 
 	feature_record_list_variant = provider_feature_list_to_variant(feature_record_list);
-	_INFO("%s", g_variant_print(feature_record_list_variant, true));
+	_account_type_gslist_feature_free(feature_record_list);
 
 	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
@@ -1991,6 +2018,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2069,6 +2097,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2156,6 +2185,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2240,6 +2270,7 @@ RETURN:
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2315,12 +2346,14 @@ gboolean account_manager_handle_account_type_query_label_by_app_id (AccountManag
 	}
 
 	label_list_variant = label_list_to_variant (label_list);
+	_account_type_gslist_label_free(label_list);
 
 RETURN:
 	if (return_code != _ACCOUNT_ERROR_NONE)
 	{
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2409,6 +2442,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2488,6 +2522,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
@@ -2581,6 +2616,7 @@ RETURN:
 		_ERR("Account SVC is returning error [%d]", return_code);
 		GError* error = g_error_new (__ACCOUNT_ERROR_quark(), return_code, "RecordNotFound");
 		g_dbus_method_invocation_return_gerror (invocation, error);
+		g_error_free(error);
 	}
 	else
 	{
