@@ -1,7 +1,7 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.1.4
+Version:    0.1.5
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0
@@ -93,8 +93,8 @@ then
 '
 fi
 
-#chown system:system %{TZ_SYS_DB}/.account.db
-#chown system:system %{TZ_SYS_DB}/.account.db-journal
+chown service_fw:service_fw %{TZ_SYS_DB}/.account.db
+chown service_fw:service_fw %{TZ_SYS_DB}/.account.db-journal
 
 #chmod 600 %{TZ_SYS_DB}/.account.db
 #chmod 600 %{TZ_SYS_DB}/.account.db-journal

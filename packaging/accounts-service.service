@@ -1,16 +1,16 @@
 [Unit]
 Description=Accounts service
-After=tizen-runtime.target
-Requires=tizen-runtime.target
+After=dbus.socket
+Requires=dbus.socket
 
 [Service]
-#User=system
-#Gruop=system
 Type=dbus
 BusName=org.tizen.account.manager
 ExecStart=/usr/bin/account-svcd
-#Restart=always
-#RestartSec=1
+CapabilityBoundSet=~CAP_MAC_ADMIN
+CapabilityBoundSet=~CAP_MAC_OVERRIDE
+User=service_fw
+Group=service_fw
 
 [Install]
 WantedBy=multi-user.target
