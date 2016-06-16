@@ -3746,7 +3746,7 @@ int _account_type_query_label_by_app_id(account_type_label_cb callback, const ch
 		_account_type_free_label_with_items(label_record);
 
 //		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, _ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
-		if(cb_ret == TRUE) {
+		if(cb_ret != TRUE) {
 			_INFO("Callback func returs FALSE, its iteration is stopped!!!!\n");
 			break;
 		}
