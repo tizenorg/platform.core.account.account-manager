@@ -915,14 +915,14 @@ static int _account_update_account_by_user_name(int pid, uid_t uid, account_s *a
 		ACCOUNT_ERROR("No permission to update\n");
 		return _ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
-
+/*
 	error_code = encrypt_access_token(account);
 	if (error_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_encrypt_access_token error");
 		return error_code;
 	}
-
+*/
 	_account_compare_old_record_by_user_name(account, user_name, package_name);
 
 	if( _account_db_err_code(g_hAccountDB) == SQLITE_PERM ){
@@ -1095,7 +1095,7 @@ int _account_insert_to_db(account_s* account, int pid, uid_t uid, int *account_i
 		pthread_mutex_unlock(&account_mutex);
 		return _ACCOUNT_ERROR_NOT_ALLOW_MULTIPLE;
 	}
-
+/*
 	error_code = encrypt_access_token(data);
 	if (error_code != _ACCOUNT_ERROR_NONE)
 	{
@@ -1105,7 +1105,7 @@ int _account_insert_to_db(account_s* account, int pid, uid_t uid, int *account_i
 		pthread_mutex_unlock(&account_mutex);
 		return error_code;
 	}
-
+*/
 	error_code = _account_execute_insert_query(data);
 
 	if (error_code != _ACCOUNT_ERROR_NONE)
@@ -1453,14 +1453,14 @@ static int _account_update_account(int pid, uid_t uid, account_s *account, int a
 		ACCOUNT_ERROR("No permission to update\n");
 		return _ACCOUNT_ERROR_PERMISSION_DENIED;
 	}
-
+/*
 	error_code = encrypt_access_token(account);
 	if (error_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_encrypt_access_token error");
 		return error_code;
 	}
-
+*/
 	error_code = _account_compare_old_record(account, account_id);
 	if (error_code != _ACCOUNT_ERROR_NONE) {
 		ACCOUNT_ERROR("_account_compare_old_record fail\n");
@@ -1562,14 +1562,14 @@ static int _account_update_account_ex(account_s *account, int account_id)
 		ACCOUNT_ERROR("Package name is mandetory field, it can not be NULL!!!!\n");
 		return _ACCOUNT_ERROR_INVALID_PARAMETER;
 	}
-
+/*
 	error_code = encrypt_access_token(account);
 	if (error_code != _ACCOUNT_ERROR_NONE)
 	{
 		_ERR("_encrypt_access_token error");
 		return error_code;
 	}
-
+*/
 	error_code = _account_compare_old_record(account, account_id);
 	if (error_code != _ACCOUNT_ERROR_NONE) {
 		ACCOUNT_ERROR("_account_compare_old_record fail\n");
@@ -3746,7 +3746,7 @@ int _account_type_query_label_by_app_id(account_type_label_cb callback, const ch
 		_account_type_free_label_with_items(label_record);
 
 //		ACCOUNT_CATCH_ERROR(cb_ret == TRUE, {}, _ACCOUNT_ERROR_NONE, ("Callback func returs FALSE, its iteration is stopped!!!!\n"));
-		if(cb_ret == TRUE) {
+		if(cb_ret != TRUE) {
 			_INFO("Callback func returs FALSE, its iteration is stopped!!!!\n");
 			break;
 		}
