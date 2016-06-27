@@ -351,7 +351,7 @@ int _account_db_open(int mode, int pid, uid_t uid)
 
 	ACCOUNT_GET_USER_DB_DIR(account_db_dir, sizeof(account_db_dir), uid);
 
-	if (mkdir(account_db_dir, 0775) != 0)
+	if (mkdir(account_db_dir, 0777) != 0)
 		ACCOUNT_DEBUG("mkdir \"%s\" fail", account_db_dir);
 
 

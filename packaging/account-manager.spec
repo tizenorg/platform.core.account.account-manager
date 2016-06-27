@@ -1,7 +1,7 @@
 
 Name:       account-manager
 Summary:    Account Manager
-Version:    0.1.6
+Version:    0.1.7
 Release:    1
 Group:      Social & Content/Other
 License:    Apache-2.0
@@ -96,8 +96,8 @@ fi
 chown service_fw:service_fw %{TZ_SYS_DB}/.account.db
 chown service_fw:service_fw %{TZ_SYS_DB}/.account.db-journal
 
-#chmod 600 %{TZ_SYS_DB}/.account.db
-#chmod 600 %{TZ_SYS_DB}/.account.db-journal
+chmod 660 %{TZ_SYS_DB}/.account.db
+chmod 660 %{TZ_SYS_DB}/.account.db-journal
 
 #smack labeling
 #chsmack -a 'System::Shared' %{TZ_SYS_DB}/.account.db-journal
