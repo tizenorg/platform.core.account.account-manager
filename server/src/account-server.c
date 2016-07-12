@@ -1054,6 +1054,7 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 	_INFO("account_manager_handle_account_type_query_label_by_locale start");
 	lifecycle_method_call_active();
 
+	char *label_name = NULL;
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -1082,7 +1083,6 @@ account_manager_handle_account_type_query_label_by_locale(AccountManager *object
 	}
 
 	_INFO("before _account_type_query_label_by_locale");
-	char *label_name = NULL;
 	return_code = _account_type_query_label_by_locale(app_id, locale, &label_name);
 	_INFO("after _account_type_query_label_by_locale=[%d]", return_code);
 
@@ -1230,6 +1230,7 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 	_INFO("account_manager_account_get_total_count_from_db start");
 	lifecycle_method_call_active();
 
+	int count = -1;
 	guint pid = _get_client_pid(invocation);
 
 	_INFO("client Id = [%u]", pid);
@@ -1259,7 +1260,6 @@ gboolean account_manager_account_get_total_count_from_db(AccountManager *object,
 
 
 	_INFO("before account_get_total_count_from_db");
-	int count = -1;
 	return_code = _account_get_total_count_from_db(include_hidden, &count);
 	_INFO("before account_get_total_count_from_db=[%d], return_code");
 
@@ -2388,6 +2388,7 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 	_INFO("account_manager_handle_account_type_query_by_app_id start");
 	lifecycle_method_call_active();
 
+	account_type_s* account_type = NULL;
 	GVariant* account_type_variant = NULL;
 
 	guint pid = _get_client_pid(invocation);
@@ -2418,7 +2419,6 @@ gboolean account_manager_handle_account_type_query_by_app_id (AccountManager *ob
 	}
 
 	_INFO("before _account_type_query_by_app_id");
-	account_type_s* account_type = NULL;
 	return_code = _account_type_query_by_app_id (app_id, &account_type);
 	_INFO("after _account_type_query_by_app_id=[%d]", return_code);
 
